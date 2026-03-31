@@ -1,0 +1,324 @@
+import http from "node:http";
+import { spawn } from "node:child_process";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { extname, join } from "node:path";
+import os from "node:os";
+
+const host = "127.0.0.1";
+const port = Number(process.env.PORT || 4317);
+const noListen = process.env.SWITCHBOARD_NO_LISTEN === "1";
+const appDir = new URL(".", import.meta.url).pathname;
+const publicDir = join(appDir, "public");
+const codexDir = process.env.CODEX_DIR || join(os.homedir(), ".codex");
+const authFile = join(codexDir, "auth.json");
+const stateDir = process.env.SWITCHBOARD_STATE_DIR || join(os.homedir(), ".codex-switchboard");
+const profilesDir = join(stateDir, "profiles");
+const metaFile = join(stateDir, "meta.json");
+
+mkdirSync(profilesDir, { recursive: true });
+
+function sendJson(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(data));
+}
+
+function sendText(res, status, text, contentType = "text/plain; charset=utf-8") {
+  res.writeHead(status, { "Content-Type": contentType });
+  res.end(text);
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 1024 * 1024) {
+        reject(new Error("Request body too large"));
+      }
+    });
+    req.on("end", () => resolve(body));
+    req.on("error", reject);
+  });
+}
+
+function safeName(name) {
+  return String(name || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function profileAuthPath(name) {
+  return join(profilesDir, safeName(name), "auth.json");
+}
+
+function ensureProfileDir(name) {
+  const dir = join(profilesDir, safeName(name));
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function readMeta() {
+  if (!existsSync(metaFile)) {
+    return { activeProfile: null };
+  }
+
+  try {
+    return JSON.parse(readFileSync(metaFile, "utf8"));
+  } catch {
+    return { activeProfile: null };
+  }
+}
+
+function writeMeta(meta) {
+  mkdirSync(stateDir, { recursive: true });
+  writeFileSync(metaFile, `${JSON.stringify(meta, null, 2)}\n`, "utf8");
+}
+
+function currentAuthInfo() {
+  if (!existsSync(authFile)) {
+    return { exists: false };
+  }
+
+  try {
+    const raw = JSON.parse(readFileSync(authFile, "utf8"));
+    const mode = raw.auth_mode || "unknown";
+    const accountId = raw?.tokens?.account_id || null;
+    const lastRefresh = raw.last_refresh || null;
+    return {
+      exists: true,
+      authMode: mode,
+      accountId,
+      lastRefresh,
+      size: statSync(authFile).size,
+    };
+  } catch {
+    return { exists: true, invalid: true };
+  }
+}
+
+function listProfiles() {
+  const meta = readMeta();
+  return readdirSync(profilesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const authPath = join(profilesDir, entry.name, "auth.json");
+      const info = existsSync(authPath) ? readAuthSummary(authPath) : { exists: false };
+      return {
+        name: entry.name,
+        active: meta.activeProfile === entry.name,
+        ...info,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function readAuthSummary(filePath) {
+  try {
+    const raw = JSON.parse(readFileSync(filePath, "utf8"));
+    return {
+      exists: true,
+      authMode: raw.auth_mode || "unknown",
+      accountId: raw?.tokens?.account_id || null,
+      lastRefresh: raw.last_refresh || null,
+      size: statSync(filePath).size,
+    };
+  } catch {
+    return { exists: true, invalid: true };
+  }
+}
+
+function runCodexStatus() {
+  return new Promise((resolve) => {
+    const child = spawn("codex", ["login", "status"], {
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+
+    child.on("close", (code) => {
+      resolve({
+        code,
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+      });
+    });
+  });
+}
+
+function decodeCurrentIdentity() {
+  if (!existsSync(authFile)) {
+    return null;
+  }
+
+  try {
+    const raw = JSON.parse(readFileSync(authFile, "utf8"));
+    const idToken = raw?.tokens?.id_token;
+    if (!idToken) {
+      return null;
+    }
+
+    const payload = idToken.split(".")[1];
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const decoded = JSON.parse(Buffer.from(padded, "base64url").toString("utf8"));
+    return {
+      name: decoded.name || null,
+      email: decoded.email || null,
+      sub: decoded.sub || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function serveStatic(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const fileName = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
+  const filePath = join(publicDir, fileName);
+
+  if (!filePath.startsWith(publicDir) || !existsSync(filePath)) {
+    sendText(res, 404, "Not found");
+    return true;
+  }
+
+  const typeByExt = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+  };
+
+  sendText(res, 200, readFileSync(filePath, "utf8"), typeByExt[extname(filePath)] || "text/plain; charset=utf-8");
+  return true;
+}
+
+async function handleApi(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+
+  if (req.method === "GET" && url.pathname === "/api/state") {
+    const codexStatus = await runCodexStatus();
+    sendJson(res, 200, {
+      currentAuth: currentAuthInfo(),
+      identity: decodeCurrentIdentity(),
+      profiles: listProfiles(),
+      meta: readMeta(),
+      codexStatus,
+      paths: {
+        codexDir,
+        authFile,
+        profilesDir,
+      },
+    });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/profiles/save-current") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+
+    if (!name) {
+      sendJson(res, 400, { error: "Profile name is required" });
+      return true;
+    }
+
+    if (!existsSync(authFile)) {
+      sendJson(res, 400, { error: "No ~/.codex/auth.json found. Run codex login first." });
+      return true;
+    }
+
+    const dir = ensureProfileDir(name);
+    copyFileSync(authFile, join(dir, "auth.json"));
+    sendJson(res, 200, { ok: true, profile: name });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/profiles/activate") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    const source = profileAuthPath(name);
+
+    if (!name || !existsSync(source)) {
+      sendJson(res, 404, { error: "Profile not found" });
+      return true;
+    }
+
+    mkdirSync(codexDir, { recursive: true });
+    copyFileSync(source, authFile);
+    writeMeta({ activeProfile: name });
+    sendJson(res, 200, { ok: true, profile: name });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/profiles/delete") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    const dir = join(profilesDir, name);
+
+    if (!name || !existsSync(dir)) {
+      sendJson(res, 404, { error: "Profile not found" });
+      return true;
+    }
+
+    rmSync(dir, { recursive: true, force: true });
+    const meta = readMeta();
+    if (meta.activeProfile === name) {
+      writeMeta({ activeProfile: null });
+    }
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/current/clear-auth") {
+    rmSync(authFile, { force: true });
+    const meta = readMeta();
+    writeMeta({ activeProfile: meta.activeProfile || null });
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  return false;
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.url.startsWith("/api/")) {
+      const handled = await handleApi(req, res);
+      if (!handled) {
+        sendJson(res, 404, { error: "Not found" });
+      }
+      return;
+    }
+
+    serveStatic(req, res);
+  } catch (error) {
+    sendJson(res, 500, { error: error instanceof Error ? error.message : "Unknown error" });
+  }
+});
+
+if (noListen) {
+  console.log("Codex Switchboard loaded without listening");
+} else {
+  server.listen(port, host, () => {
+    console.log(`Codex Switchboard running at http://${host}:${port}`);
+  });
+}
