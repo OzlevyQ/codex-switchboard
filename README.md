@@ -28,6 +28,14 @@ After installation:
 
 ### macOS / Linux
 
+Fast install without cloning:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scripts/bootstrap.sh | bash
+```
+
+Local install from the repo:
+
 ```bash
 cd codex-switchboard
 bash ./scripts/install.sh

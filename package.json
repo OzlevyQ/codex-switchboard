@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
+    "bootstrap:unix": "bash ./scripts/bootstrap.sh",
     "install:unix": "bash ./scripts/install.sh",
     "uninstall:unix": "bash ./scripts/uninstall.sh",
     "install:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
