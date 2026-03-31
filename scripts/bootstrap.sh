@@ -26,7 +26,10 @@ echo "Downloading Codex Switchboard from ${REPO_OWNER}/${REPO_NAME}@${REPO_REF}.
 curl -fsSL "${ARCHIVE_URL}" -o "${TMP_DIR}/codex-switchboard.tar.gz"
 tar -xzf "${TMP_DIR}/codex-switchboard.tar.gz" -C "${TMP_DIR}"
 
-EXTRACTED_DIR="$(find "${TMP_DIR}" -maxdepth 1 -type d -name "${REPO_NAME}-*" | head -n 1)"
+EXTRACTED_DIR="${TMP_DIR}/${REPO_NAME}-${REPO_REF}"
+if [[ ! -d "${EXTRACTED_DIR}" ]]; then
+  EXTRACTED_DIR="$(find "${TMP_DIR}" -mindepth 1 -maxdepth 1 -type d -name "${REPO_NAME}-*" | head -n 1)"
+fi
 if [[ -z "${EXTRACTED_DIR}" ]]; then
   echo "Failed to locate extracted project directory." >&2
   exit 1
