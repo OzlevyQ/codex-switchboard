@@ -1,11 +1,12 @@
 {
   "name": "codex-switchboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "bootstrap:unix": "bash ./scripts/bootstrap.sh",
+    "bootstrap:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\bootstrap.ps1",
     "install:unix": "bash ./scripts/install.sh",
     "uninstall:unix": "bash ./scripts/uninstall.sh",
     "install:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",

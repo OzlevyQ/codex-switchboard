@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $RootDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $SwitchboardDir = Join-Path $HOME ".codex-switchboard"
 $AppDir = Join-Path $SwitchboardDir "app"
-$BinDir = Join-Path $SwitchboardDir "bin"
+$BackupDir = Join-Path $SwitchboardDir "original"
 $ConfigFile = Join-Path $SwitchboardDir "config.json"
 
 $realCodex = $env:CODEX_SWITCHBOARD_REAL_CODEX
@@ -15,42 +15,54 @@ if (-not $realCodex) {
   $realCodex = $cmd.Source
 }
 
+$TargetBinDir = Split-Path -Parent $realCodex
+$ManagedCodex = Join-Path $TargetBinDir "codex.cmd"
+$BackupCodex = Join-Path $BackupDir "codex.cmd"
+
 New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
-New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $SwitchboardDir "profiles") | Out-Null
 
 Copy-Item -Force (Join-Path $RootDir "server.mjs") (Join-Path $AppDir "server.mjs")
+if (Test-Path (Join-Path $AppDir "runtime")) { Remove-Item -Recurse -Force (Join-Path $AppDir "runtime") }
+if (Test-Path (Join-Path $AppDir "public")) { Remove-Item -Recurse -Force (Join-Path $AppDir "public") }
 Copy-Item -Recurse -Force (Join-Path $RootDir "runtime") (Join-Path $AppDir "runtime")
 Copy-Item -Recurse -Force (Join-Path $RootDir "public") (Join-Path $AppDir "public")
+
+if (-not (Test-Path $BackupCodex)) {
+  Copy-Item -Force $realCodex $BackupCodex
+}
+
+Remove-Item -Force -ErrorAction SilentlyContinue $ManagedCodex
 
 @{
   version = "1.1.0"
   installedAt = [DateTime]::UtcNow.ToString("o")
   platform = "windows"
-  realCodex = $realCodex
+  realCodex = $BackupCodex
   appDir = $AppDir
-  binDir = $BinDir
+  binDir = $TargetBinDir
+  managedCodex = $ManagedCodex
+  backupCodex = $BackupCodex
 } | ConvertTo-Json | Set-Content -Encoding UTF8 $ConfigFile
 
 @"
 @echo off
 node "$AppDir\runtime\codex-wrapper.mjs" %*
-"@ | Set-Content -Encoding ASCII (Join-Path $BinDir "codex.cmd")
+"@ | Set-Content -Encoding ASCII $ManagedCodex
 
 @"
 @echo off
 node "$AppDir\runtime\codex-swap.mjs" %*
-"@ | Set-Content -Encoding ASCII (Join-Path $BinDir "codex-swap.cmd")
+"@ | Set-Content -Encoding ASCII (Join-Path $TargetBinDir "codex-swap.cmd")
 
 @"
 @echo off
 node "$AppDir\server.mjs" %*
-"@ | Set-Content -Encoding ASCII (Join-Path $BinDir "codex-switchboard-dashboard.cmd")
-
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if (-not $userPath.Split(";") -contains $BinDir) {
-  [Environment]::SetEnvironmentVariable("Path", "$BinDir;$userPath", "User")
-}
+"@ | Set-Content -Encoding ASCII (Join-Path $TargetBinDir "codex-switchboard-dashboard.cmd")
 
 Write-Host "Codex Switchboard installed."
-Write-Host "Open a new terminal, then use: codex, codex-swap, codex-switchboard-dashboard"
+Write-Host "real codex backup: $BackupCodex"
+Write-Host "commands: codex, codex-swap, codex-switchboard-dashboard"
+Write-Host "installed in: $TargetBinDir"
+Write-Host "It should work immediately in the current environment."

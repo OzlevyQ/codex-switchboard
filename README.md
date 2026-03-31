@@ -12,6 +12,11 @@ Codex account switching system with:
 The system keeps using the default `~/.codex` history and workspace state.
 Only `~/.codex/auth.json` is swapped.
 
+The installer replaces the active `codex` launcher in-place, keeps a backup of
+the original binary, symlink, or shim, and restores it on uninstall. That
+means the command should work immediately after installation, without
+`source ~/.zshrc`, `hash -r`, or opening a new shell.
+
 ## Commands
 
 After installation:
@@ -40,6 +45,8 @@ Alternative bootstrap URL:
 curl -fsSL https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scripts/bootstrap.sh | bash
 ```
 
+If `curl` is missing, the bootstrap script also supports `wget`.
+
 Local install from a checked-out repo:
 
 ```bash
@@ -54,6 +61,20 @@ npm run install:unix
 ```
 
 ### Windows
+
+Fast install without cloning:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scripts/bootstrap.ps1 | iex"
+```
+
+Or:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scripts/bootstrap.ps1 -UseBasicParsing | iex"
+```
+
+Local install from a checked-out repo:
 
 ```powershell
 cd codex-switchboard
@@ -100,6 +121,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall.ps1 --purge-data
 
 - app files: `~/.codex-switchboard/app`
 - config: `~/.codex-switchboard/config.json`
+- original codex backup: `~/.codex-switchboard/original`
 - saved profiles: `~/.codex-switchboard/profiles`
 - active profile metadata: `~/.codex-switchboard/meta.json`
 
@@ -117,9 +139,9 @@ automatically in future runs.
 
 ## Notes
 
-- The Unix installer updates `~/.zshrc`, `~/.bashrc`, and Fish `conf.d` so the
-  launcher commands are on `PATH`.
-- The Windows installer adds the local switchboard `bin` directory to the user
-  `PATH`.
-- The installer stores the original Codex binary path in
+- The Unix installer writes the wrapper directly over the active `codex`
+  executable path, removing the original symlink first when needed, and stores
+  a backup.
+- The Windows installer does the same for the active `codex.cmd` shim.
+- The installer stores the managed path and the backup path in
   `~/.codex-switchboard/config.json`.

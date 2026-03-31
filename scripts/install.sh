@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="${HOME}/.codex-switchboard/app"
-BIN_DIR="${HOME}/.local/bin"
 CONFIG_DIR="${HOME}/.codex-switchboard"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
+BACKUP_DIR="${HOME}/.codex-switchboard/original"
 
 detect_real_codex() {
   if [[ -f "${CONFIG_FILE}" ]]; then
@@ -57,67 +57,69 @@ PY
   exit 1
 }
 
-REAL_CODEX="$(detect_real_codex)"
+REAL_CODEX="${CODEX_SWITCHBOARD_REAL_CODEX:-$(detect_real_codex)}"
 if [[ "${REAL_CODEX}" == *".codex-switchboard"* ]]; then
   echo "Resolved codex points to Codex Switchboard itself. Reinstall with CODEX_SWITCHBOARD_REAL_CODEX=/path/to/real/codex." >&2
   exit 1
 fi
 
-mkdir -p "${APP_DIR}" "${BIN_DIR}" "${CONFIG_DIR}" "${HOME}/.codex-switchboard/profiles"
+TARGET_BIN_DIR="$(dirname "${REAL_CODEX}")"
+TARGET_CODEX="${TARGET_BIN_DIR}/codex"
+BACKUP_CODEX="${BACKUP_DIR}/codex"
+
+mkdir -p "${APP_DIR}" "${CONFIG_DIR}" "${HOME}/.codex-switchboard/profiles" "${BACKUP_DIR}"
 rm -rf "${APP_DIR}/runtime" "${APP_DIR}/public"
 mkdir -p "${APP_DIR}/runtime"
+
 cp "${ROOT_DIR}/server.mjs" "${APP_DIR}/server.mjs"
 mkdir -p "${APP_DIR}/public"
 cp -R "${ROOT_DIR}/public/." "${APP_DIR}/public/"
 cp -R "${ROOT_DIR}/runtime/." "${APP_DIR}/runtime/"
+
+if [[ ! -w "${TARGET_BIN_DIR}" ]]; then
+  echo "Target bin directory is not writable: ${TARGET_BIN_DIR}" >&2
+  echo "Set CODEX_SWITCHBOARD_REAL_CODEX to a writable Codex path and retry." >&2
+  exit 1
+fi
+
+if [[ ! -f "${BACKUP_CODEX}" ]]; then
+  cp -P "${TARGET_CODEX}" "${BACKUP_CODEX}"
+fi
+
+rm -f "${TARGET_CODEX}"
 
 cat > "${CONFIG_FILE}" <<EOF
 {
   "version": "1.1.0",
   "installedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "platform": "$(uname -s)",
-  "realCodex": "${REAL_CODEX}",
+  "realCodex": "${BACKUP_CODEX}",
   "appDir": "${APP_DIR}",
-  "binDir": "${BIN_DIR}"
+  "binDir": "${TARGET_BIN_DIR}",
+  "managedCodex": "${TARGET_CODEX}",
+  "backupCodex": "${BACKUP_CODEX}"
 }
 EOF
 
-cat > "${BIN_DIR}/codex" <<EOF
+cat > "${TARGET_CODEX}" <<EOF
 #!/usr/bin/env bash
 exec node "${APP_DIR}/runtime/codex-wrapper.mjs" "\$@"
 EOF
 
-cat > "${BIN_DIR}/codex-swap" <<EOF
+cat > "${TARGET_BIN_DIR}/codex-swap" <<EOF
 #!/usr/bin/env bash
 exec node "${APP_DIR}/runtime/codex-swap.mjs" "\$@"
 EOF
 
-cat > "${BIN_DIR}/codex-switchboard-dashboard" <<EOF
+cat > "${TARGET_BIN_DIR}/codex-switchboard-dashboard" <<EOF
 #!/usr/bin/env bash
 exec node "${APP_DIR}/server.mjs" "\$@"
 EOF
 
-chmod +x "${BIN_DIR}/codex" "${BIN_DIR}/codex-swap" "${BIN_DIR}/codex-switchboard-dashboard"
-
-for rc in "${HOME}/.zshrc" "${HOME}/.bashrc"; do
-  touch "${rc}"
-  if ! grep -q 'codex-switchboard PATH' "${rc}"; then
-    cat >> "${rc}" <<EOF
-
-# codex-switchboard PATH
-export PATH="\$HOME/.local/bin:\$PATH"
-EOF
-  fi
-done
-
-mkdir -p "${HOME}/.config/fish/conf.d"
-cat > "${HOME}/.config/fish/conf.d/codex-switchboard.fish" <<'EOF'
-if not contains $HOME/.local/bin $PATH
-    set -gx PATH $HOME/.local/bin $PATH
-end
-EOF
+chmod +x "${TARGET_CODEX}" "${TARGET_BIN_DIR}/codex-swap" "${TARGET_BIN_DIR}/codex-switchboard-dashboard"
 
 echo "Codex Switchboard installed."
-echo "real codex: ${REAL_CODEX}"
+echo "real codex backup: ${BACKUP_CODEX}"
 echo "commands: codex, codex-swap, codex-switchboard-dashboard"
-echo "If needed, restart the shell or run: source ~/.zshrc"
+echo "installed in: ${TARGET_BIN_DIR}"
+echo "It should work immediately in the current environment."

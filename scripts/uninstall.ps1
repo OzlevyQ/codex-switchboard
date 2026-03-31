@@ -7,13 +7,24 @@ if ($args -contains "--purge-data") {
 
 $SwitchboardDir = Join-Path $HOME ".codex-switchboard"
 $AppDir = Join-Path $SwitchboardDir "app"
-$BinDir = Join-Path $SwitchboardDir "bin"
+$ConfigFile = Join-Path $SwitchboardDir "config.json"
 
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $BinDir "codex.cmd")
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $BinDir "codex-swap.cmd")
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $BinDir "codex-switchboard-dashboard.cmd")
+$config = $null
+if (Test-Path $ConfigFile) {
+  $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+}
+
+if ($config -and (Test-Path $config.backupCodex)) {
+  Remove-Item -Force -ErrorAction SilentlyContinue $config.managedCodex
+  Copy-Item -Force $config.backupCodex $config.managedCodex
+}
+
+if ($config) {
+  Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $config.binDir "codex-swap.cmd")
+  Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $config.binDir "codex-switchboard-dashboard.cmd")
+}
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $AppDir
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $SwitchboardDir "config.json")
+Remove-Item -Force -ErrorAction SilentlyContinue $ConfigFile
 
 if ($PurgeData) {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $SwitchboardDir

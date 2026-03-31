@@ -12,18 +12,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if ! command -v curl >/dev/null 2>&1; then
-  echo "curl is required." >&2
-  exit 1
-fi
-
 if ! command -v tar >/dev/null 2>&1; then
   echo "tar is required." >&2
   exit 1
 fi
 
 echo "Downloading Codex Switchboard from ${REPO_OWNER}/${REPO_NAME}@${REPO_REF}..."
-curl -fsSL "${ARCHIVE_URL}" -o "${TMP_DIR}/codex-switchboard.tar.gz"
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "${ARCHIVE_URL}" -o "${TMP_DIR}/codex-switchboard.tar.gz"
+elif command -v wget >/dev/null 2>&1; then
+  wget -qO "${TMP_DIR}/codex-switchboard.tar.gz" "${ARCHIVE_URL}"
+else
+  echo "curl or wget is required." >&2
+  exit 1
+fi
 tar -xzf "${TMP_DIR}/codex-switchboard.tar.gz" -C "${TMP_DIR}"
 
 INSTALL_SCRIPT="$(find "${TMP_DIR}" -type f -path '*/scripts/install.sh' | head -n 1)"

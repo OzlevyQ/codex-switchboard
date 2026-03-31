@@ -8,26 +8,44 @@ fi
 
 CONFIG_DIR="${HOME}/.codex-switchboard"
 APP_DIR="${CONFIG_DIR}/app"
-BIN_DIR="${HOME}/.local/bin"
+CONFIG_FILE="${CONFIG_DIR}/config.json"
 
-rm -f "${BIN_DIR}/codex" "${BIN_DIR}/codex-swap" "${BIN_DIR}/codex-switchboard-dashboard"
-rm -rf "${APP_DIR}"
-rm -f "${CONFIG_DIR}/config.json"
-
-for rc in "${HOME}/.zshrc" "${HOME}/.bashrc"; do
-  if [[ -f "${rc}" ]]; then
-    python3 - <<'PY' "${rc}"
+MANAGED_CODEX="$(python3 - <<'PY' "${CONFIG_FILE}"
+import json, sys
 from pathlib import Path
-import sys
 p = Path(sys.argv[1])
-text = p.read_text()
-text = text.replace("\n# codex-switchboard PATH\nexport PATH=\"$HOME/.local/bin:$PATH\"\n", "\n")
-p.write_text(text)
+if p.exists():
+    data = json.loads(p.read_text())
+    print(data.get("managedCodex", ""))
 PY
-  fi
-done
+)"
+BACKUP_CODEX="$(python3 - <<'PY' "${CONFIG_FILE}"
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    data = json.loads(p.read_text())
+    print(data.get("backupCodex", ""))
+PY
+)"
+BIN_DIR="$(python3 - <<'PY' "${CONFIG_FILE}"
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if p.exists():
+    data = json.loads(p.read_text())
+    print(data.get("binDir", ""))
+PY
+)"
 
-rm -f "${HOME}/.config/fish/conf.d/codex-switchboard.fish"
+if [[ -n "${MANAGED_CODEX}" && -n "${BACKUP_CODEX}" && -f "${BACKUP_CODEX}" ]]; then
+  rm -f "${MANAGED_CODEX}"
+  cp -P "${BACKUP_CODEX}" "${MANAGED_CODEX}"
+fi
+
+rm -f "${BIN_DIR}/codex-swap" "${BIN_DIR}/codex-switchboard-dashboard"
+rm -rf "${APP_DIR}"
+rm -f "${CONFIG_FILE}"
 
 if [[ "${PURGE_DATA}" -eq 1 ]]; then
   rm -rf "${CONFIG_DIR}"
