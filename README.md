@@ -31,10 +31,16 @@ After installation:
 Fast install without cloning:
 
 ```bash
+tmp="$(mktemp -d)" && curl -fsSL https://codeload.github.com/OzlevyQ/codex-switchboard/tar.gz/refs/heads/main | tar -xzf - -C "$tmp" && bash "$(find "$tmp" -type f -path '*/scripts/install.sh' | head -n 1)" && rm -rf "$tmp"
+```
+
+Alternative bootstrap URL:
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scripts/bootstrap.sh | bash
 ```
 
-Local install from the repo:
+Local install from a checked-out repo:
 
 ```bash
 cd codex-switchboard

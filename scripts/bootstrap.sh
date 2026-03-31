@@ -26,13 +26,10 @@ echo "Downloading Codex Switchboard from ${REPO_OWNER}/${REPO_NAME}@${REPO_REF}.
 curl -fsSL "${ARCHIVE_URL}" -o "${TMP_DIR}/codex-switchboard.tar.gz"
 tar -xzf "${TMP_DIR}/codex-switchboard.tar.gz" -C "${TMP_DIR}"
 
-EXTRACTED_DIR="${TMP_DIR}/${REPO_NAME}-${REPO_REF}"
-if [[ ! -d "${EXTRACTED_DIR}" ]]; then
-  EXTRACTED_DIR="$(find "${TMP_DIR}" -mindepth 1 -maxdepth 1 -type d -name "${REPO_NAME}-*" | head -n 1)"
-fi
-if [[ -z "${EXTRACTED_DIR}" ]]; then
-  echo "Failed to locate extracted project directory." >&2
+INSTALL_SCRIPT="$(find "${TMP_DIR}" -type f -path '*/scripts/install.sh' | head -n 1)"
+if [[ -z "${INSTALL_SCRIPT}" ]]; then
+  echo "Failed to locate scripts/install.sh inside the downloaded archive." >&2
   exit 1
 fi
 
-bash "${EXTRACTED_DIR}/scripts/install.sh"
+bash "${INSTALL_SCRIPT}"
