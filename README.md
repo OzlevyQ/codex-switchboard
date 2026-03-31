@@ -215,7 +215,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall.ps1 --purge-data
 | --- | --- |
 | `~/.codex-switchboard/app` | Runtime files |
 | `~/.codex-switchboard/config.json` | Installation metadata |
-| `~/.codex-switchboard/original` | Backup of the original Codex launcher |
+| `<codex-bin-dir>/codex-switchboard-real` | Backup of the original Codex launcher |
 | `~/.codex-switchboard/profiles` | Saved auth profiles |
 | `~/.codex-switchboard/meta.json` | Active profile metadata |
 
@@ -224,6 +224,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall.ps1 --purge-data
 - Unix install replaces the active `codex` executable path directly
 - if the original `codex` path is a symlink, uninstall restores it correctly
 - Windows install replaces the active `codex.cmd` shim
+- the original launcher backup is kept next to the real `codex` command so pnpm shims keep working
 - managed and backup paths are stored in `~/.codex-switchboard/config.json`
 
 ## Repository

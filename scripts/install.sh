@@ -65,7 +65,7 @@ fi
 
 TARGET_BIN_DIR="$(dirname "${REAL_CODEX}")"
 TARGET_CODEX="${TARGET_BIN_DIR}/codex"
-BACKUP_CODEX="${BACKUP_DIR}/codex"
+BACKUP_CODEX="${TARGET_BIN_DIR}/codex-switchboard-real"
 
 mkdir -p "${APP_DIR}" "${CONFIG_DIR}" "${HOME}/.codex-switchboard/profiles" "${BACKUP_DIR}"
 rm -rf "${APP_DIR}/runtime" "${APP_DIR}/public"
@@ -82,8 +82,14 @@ if [[ ! -w "${TARGET_BIN_DIR}" ]]; then
   exit 1
 fi
 
+LEGACY_BACKUP_CODEX="${BACKUP_DIR}/codex"
+
 if [[ ! -f "${BACKUP_CODEX}" ]]; then
-  cp -P "${TARGET_CODEX}" "${BACKUP_CODEX}"
+  if [[ -f "${LEGACY_BACKUP_CODEX}" ]]; then
+    cp "${LEGACY_BACKUP_CODEX}" "${BACKUP_CODEX}"
+  else
+    cp -P "${TARGET_CODEX}" "${BACKUP_CODEX}"
+  fi
 fi
 
 rm -f "${TARGET_CODEX}"

@@ -73,22 +73,41 @@ export function setActiveProfile(profileName) {
 
 export function listProfiles() {
   mkdirSync(PROFILES_DIR, { recursive: true });
-  const entries = [];
+  const deduped = new Map();
   for (const name of readDirSafe(PROFILES_DIR)) {
     const authPath = path.join(PROFILES_DIR, name, "auth.json");
     if (!existsSync(authPath)) {
       continue;
     }
     const identity = decodeIdentityFromAuth(authPath);
-    entries.push({
+    const entry = {
       name,
       authPath,
       email: identity?.email || "-",
       identity,
-    });
+    };
+    const key = identity?.accountId || identity?.email || name;
+    const existing = deduped.get(key);
+    if (!existing || shouldReplaceProfileEntry(existing, entry)) {
+      deduped.set(key, entry);
+    }
   }
 
-  return entries.sort((a, b) => a.email.localeCompare(b.email));
+  return Array.from(deduped.values()).sort((a, b) => a.email.localeCompare(b.email));
+}
+
+function shouldReplaceProfileEntry(existing, next) {
+  const existingPreferred = existing.name === slugifyProfileName(existing.email);
+  const nextPreferred = next.name === slugifyProfileName(next.email);
+  if (nextPreferred && !existingPreferred) {
+    return true;
+  }
+
+  if (existingPreferred && !nextPreferred) {
+    return false;
+  }
+
+  return next.name.localeCompare(existing.name) < 0;
 }
 
 function readDirSafe(dirPath) {

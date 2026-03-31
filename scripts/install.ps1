@@ -17,7 +17,8 @@ if (-not $realCodex) {
 
 $TargetBinDir = Split-Path -Parent $realCodex
 $ManagedCodex = Join-Path $TargetBinDir "codex.cmd"
-$BackupCodex = Join-Path $BackupDir "codex.cmd"
+$BackupCodex = Join-Path $TargetBinDir "codex-switchboard-real.cmd"
+$LegacyBackupCodex = Join-Path $BackupDir "codex.cmd"
 
 New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
 New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
@@ -30,7 +31,11 @@ Copy-Item -Recurse -Force (Join-Path $RootDir "runtime") (Join-Path $AppDir "run
 Copy-Item -Recurse -Force (Join-Path $RootDir "public") (Join-Path $AppDir "public")
 
 if (-not (Test-Path $BackupCodex)) {
-  Copy-Item -Force $realCodex $BackupCodex
+  if (Test-Path $LegacyBackupCodex) {
+    Copy-Item -Force $LegacyBackupCodex $BackupCodex
+  } else {
+    Copy-Item -Force $realCodex $BackupCodex
+  }
 }
 
 Remove-Item -Force -ErrorAction SilentlyContinue $ManagedCodex
