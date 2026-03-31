@@ -75,8 +75,9 @@ profile.
 | Command | Purpose |
 | --- | --- |
 | `codex` | Shows the launcher, optionally switches account, then starts Codex |
+| `codex ui` | Opens the dashboard and launches it in the default browser |
 | `codex-swap` | Switches directly between saved accounts |
-| `codex-switchboard-dashboard` | Starts the local dashboard on `http://127.0.0.1:4317` |
+| `codex-switchboard-dashboard` | Starts the local dashboard and opens `http://127.0.0.1:4317` |
 
 ## Installation
 
@@ -155,6 +156,12 @@ codex-swap
 ```
 
 ### Open the dashboard
+
+```bash
+codex ui
+```
+
+Or:
 
 ```bash
 codex-switchboard-dashboard

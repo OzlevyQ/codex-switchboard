@@ -16,6 +16,7 @@ import os from "node:os";
 const host = "127.0.0.1";
 const port = Number(process.env.PORT || 4317);
 const noListen = process.env.SWITCHBOARD_NO_LISTEN === "1";
+const shouldOpenBrowser = process.argv.includes("--open-browser");
 const appDir = new URL(".", import.meta.url).pathname;
 const publicDir = join(appDir, "public");
 const codexDir = process.env.CODEX_DIR || join(os.homedir(), ".codex");
@@ -34,6 +35,33 @@ function sendJson(res, status, data) {
 function sendText(res, status, text, contentType = "text/plain; charset=utf-8") {
   res.writeHead(status, { "Content-Type": contentType });
   res.end(text);
+}
+
+function dashboardUrl() {
+  return `http://${host}:${port}`;
+}
+
+function openBrowser(url) {
+  const platform = process.platform;
+  let command;
+  let args;
+
+  if (platform === "darwin") {
+    command = "open";
+    args = [url];
+  } else if (platform === "win32") {
+    command = "cmd";
+    args = ["/c", "start", "", url];
+  } else {
+    command = "xdg-open";
+    args = [url];
+  }
+
+  const child = spawn(command, args, {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
 }
 
 function readBody(req) {
@@ -318,7 +346,31 @@ const server = http.createServer(async (req, res) => {
 if (noListen) {
   console.log("Codex Switchboard loaded without listening");
 } else {
+  server.on("error", (error) => {
+    if (error && error.code === "EADDRINUSE") {
+      console.log(`Codex Switchboard already running at ${dashboardUrl()}`);
+      if (shouldOpenBrowser) {
+        try {
+          openBrowser(dashboardUrl());
+        } catch {
+          // Ignore browser open failures and keep the process exit code clean.
+        }
+      }
+      process.exit(0);
+      return;
+    }
+
+    throw error;
+  });
+
   server.listen(port, host, () => {
-    console.log(`Codex Switchboard running at http://${host}:${port}`);
+    console.log(`Codex Switchboard running at ${dashboardUrl()}`);
+    if (shouldOpenBrowser) {
+      try {
+        openBrowser(dashboardUrl());
+      } catch {
+        // Ignore browser open failures so the dashboard server can still run.
+      }
+    }
   });
 }

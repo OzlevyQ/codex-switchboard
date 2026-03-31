@@ -58,7 +58,7 @@ node "$AppDir\runtime\codex-swap.mjs" %*
 
 @"
 @echo off
-node "$AppDir\server.mjs" %*
+node "$AppDir\server.mjs" --open-browser %*
 "@ | Set-Content -Encoding ASCII (Join-Path $TargetBinDir "codex-switchboard-dashboard.cmd")
 
 Write-Host "Codex Switchboard installed."

@@ -250,3 +250,21 @@ export async function runRealCodex(args) {
     });
   });
 }
+
+export async function runDashboard() {
+  return new Promise((resolve) => {
+    const serverPath = path.join(SWITCHBOARD_DIR, "app", "server.mjs");
+    const child = spawn(process.execPath, [serverPath, "--open-browser"], {
+      stdio: "inherit",
+      env: process.env,
+    });
+
+    child.on("exit", (code, signal) => {
+      if (signal) {
+        resolve({ code: 1, signal });
+      } else {
+        resolve({ code: code ?? 0, signal: null });
+      }
+    });
+  });
+}

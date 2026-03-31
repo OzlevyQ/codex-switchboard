@@ -3,6 +3,7 @@ import {
   activateProfile,
   formatLauncherLines,
   printLauncherScreen,
+  runDashboard,
   runRealCodex,
   saveCurrentProfileAuto,
   waitForSingleKey,
@@ -10,6 +11,14 @@ import {
 
 async function main() {
   const args = process.argv.slice(2);
+  if (args[0] === "ui") {
+    const result = await runDashboard();
+    if (result.signal) {
+      process.kill(process.pid, result.signal);
+    }
+    process.exit(result.code);
+  }
+
   const state = formatLauncherLines();
 
   printLauncherScreen({

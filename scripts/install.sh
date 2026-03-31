@@ -113,7 +113,7 @@ EOF
 
 cat > "${TARGET_BIN_DIR}/codex-switchboard-dashboard" <<EOF
 #!/usr/bin/env bash
-exec node "${APP_DIR}/server.mjs" "\$@"
+exec node "${APP_DIR}/server.mjs" --open-browser "\$@"
 EOF
 
 chmod +x "${TARGET_CODEX}" "${TARGET_BIN_DIR}/codex-swap" "${TARGET_BIN_DIR}/codex-switchboard-dashboard"

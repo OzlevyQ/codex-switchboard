@@ -136,6 +136,12 @@
         transition: transform 120ms ease, opacity 120ms ease;
       }
 
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+        transform: none;
+      }
+
       button:hover {
         transform: translateY(-1px);
       }
@@ -215,6 +221,38 @@
         font-size: 14px;
       }
 
+      .busy {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .busy::before {
+        content: "";
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: currentColor;
+        animation: spin 0.8s linear infinite;
+      }
+
+      .secondary.busy::before,
+      .danger.busy::before {
+        border-color: rgba(30, 27, 22, 0.18);
+        border-top-color: currentColor;
+      }
+
+      .app-loading {
+        opacity: 0.8;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
       .notice {
         margin-top: 14px;
         color: #5f4f2e;
@@ -285,6 +323,10 @@
       const profilesEl = document.getElementById("profiles");
       const metaEl = document.getElementById("meta");
       const statusBox = document.getElementById("statusBox");
+      const saveCurrentButton = document.getElementById("saveCurrent");
+      const refreshButton = document.getElementById("refresh");
+      const clearAuthButton = document.getElementById("clearAuth");
+      let pendingCount = 0;
 
       async function request(path, options = {}) {
         const response = await fetch(path, {
@@ -301,10 +343,59 @@
       function row(label, value) {
         return `
           <div class="stat">
-            <span class="label">${label}</span>
-            <div class="value">${value || "-"}</div>
+            <span class="label">${escapeHtml(label)}</span>
+            <div class="value">${escapeHtml(value || "-")}</div>
           </div>
         `;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function setAppBusy(isBusy) {
+        document.body.classList.toggle("app-loading", isBusy);
+        const controls = document.querySelectorAll("button, input");
+        controls.forEach((control) => {
+          control.disabled = isBusy;
+        });
+      }
+
+      function setButtonBusy(button, isBusy, busyLabel) {
+        if (!button) {
+          return;
+        }
+
+        if (isBusy) {
+          if (!button.dataset.originalText) {
+            button.dataset.originalText = button.textContent;
+          }
+          button.textContent = busyLabel;
+          button.classList.add("busy");
+        } else {
+          button.textContent = button.dataset.originalText || button.textContent;
+          button.classList.remove("busy");
+        }
+      }
+
+      async function withBusy(button, busyLabel, action) {
+        pendingCount += 1;
+        setAppBusy(true);
+        setButtonBusy(button, true, busyLabel);
+        try {
+          return await action();
+        } finally {
+          setButtonBusy(button, false, busyLabel);
+          pendingCount = Math.max(0, pendingCount - 1);
+          if (pendingCount === 0) {
+            setAppBusy(false);
+          }
+        }
       }
 
       function renderState(data) {
@@ -333,26 +424,40 @@
             (profile) => `
               <div class="profile ${profile.active ? "active" : ""}">
                 <div class="profile-head">
-                  <div class="profile-name">${profile.name}</div>
+                  <div class="profile-name">${escapeHtml(profile.name)}</div>
                   ${profile.active ? `<span class="pill">active</span>` : ""}
                 </div>
                 <div class="profile-meta">
-                  <div>mode: ${profile.authMode || (profile.invalid ? "invalid" : "unknown")}</div>
-                  <div>account: ${profile.accountId || "-"}</div>
-                  <div>last refresh: ${profile.lastRefresh || "-"}</div>
+                  <div>mode: ${escapeHtml(profile.authMode || (profile.invalid ? "invalid" : "unknown"))}</div>
+                  <div>account: ${escapeHtml(profile.accountId || "-")}</div>
+                  <div>last refresh: ${escapeHtml(profile.lastRefresh || "-")}</div>
                 </div>
                 <div class="row">
-                  <button class="primary" onclick="activateProfile('${profile.name}')">Activate</button>
-                  <button class="danger" onclick="deleteProfile('${profile.name}')">Delete</button>
+                  <button class="primary" data-action="activate" data-profile="${escapeHtml(profile.name)}">Activate</button>
+                  <button class="danger" data-action="delete" data-profile="${escapeHtml(profile.name)}">Delete</button>
                 </div>
               </div>
             `
           )
           .join("");
+
+        for (const button of profilesEl.querySelectorAll("button[data-action]")) {
+          button.addEventListener("click", async () => {
+            const name = button.dataset.profile;
+            if (button.dataset.action === "activate") {
+              await activateProfile(name, button);
+            } else if (button.dataset.action === "delete") {
+              await deleteProfile(name, button);
+            }
+          });
+        }
       }
 
-      async function loadState() {
+      async function loadState(button = null) {
         try {
+          if (!button) {
+            statusBox.textContent = "Loading dashboard state...";
+          }
           const data = await request("/api/state");
           renderState(data);
         } catch (error) {
@@ -360,23 +465,37 @@
         }
       }
 
-      async function activateProfile(name) {
-        await request("/api/profiles/activate", {
-          method: "POST",
-          body: JSON.stringify({ name }),
-        });
-        await loadState();
+      async function activateProfile(name, button) {
+        try {
+          statusBox.textContent = `Activating ${name}...`;
+          await withBusy(button, "Activating...", async () => {
+            await request("/api/profiles/activate", {
+              method: "POST",
+              body: JSON.stringify({ name }),
+            });
+            await loadState();
+          });
+        } catch (error) {
+          statusBox.textContent = error.message;
+        }
       }
 
-      async function deleteProfile(name) {
-        await request("/api/profiles/delete", {
-          method: "POST",
-          body: JSON.stringify({ name }),
-        });
-        await loadState();
+      async function deleteProfile(name, button) {
+        try {
+          statusBox.textContent = `Deleting ${name}...`;
+          await withBusy(button, "Deleting...", async () => {
+            await request("/api/profiles/delete", {
+              method: "POST",
+              body: JSON.stringify({ name }),
+            });
+            await loadState();
+          });
+        } catch (error) {
+          statusBox.textContent = error.message;
+        }
       }
 
-      document.getElementById("saveCurrent").addEventListener("click", async () => {
+      saveCurrentButton.addEventListener("click", async () => {
         const name = profileNameInput.value.trim();
         if (!name) {
           statusBox.textContent = "Enter a profile name first.";
@@ -384,23 +503,33 @@
         }
 
         try {
-          await request("/api/profiles/save-current", {
-            method: "POST",
-            body: JSON.stringify({ name }),
+          statusBox.textContent = `Saving ${name}...`;
+          await withBusy(saveCurrentButton, "Saving...", async () => {
+            await request("/api/profiles/save-current", {
+              method: "POST",
+              body: JSON.stringify({ name }),
+            });
+            profileNameInput.value = "";
+            await loadState();
           });
-          profileNameInput.value = "";
-          await loadState();
         } catch (error) {
           statusBox.textContent = error.message;
         }
       });
 
-      document.getElementById("refresh").addEventListener("click", loadState);
+      refreshButton.addEventListener("click", async () => {
+        await withBusy(refreshButton, "Refreshing...", async () => {
+          await loadState(refreshButton);
+        });
+      });
 
-      document.getElementById("clearAuth").addEventListener("click", async () => {
+      clearAuthButton.addEventListener("click", async () => {
         try {
-          await request("/api/current/clear-auth", { method: "POST" });
-          await loadState();
+          statusBox.textContent = "Clearing current auth...";
+          await withBusy(clearAuthButton, "Clearing...", async () => {
+            await request("/api/current/clear-auth", { method: "POST" });
+            await loadState();
+          });
         } catch (error) {
           statusBox.textContent = error.message;
         }
@@ -408,7 +537,9 @@
 
       window.activateProfile = activateProfile;
       window.deleteProfile = deleteProfile;
-      loadState();
+      withBusy(null, "", async () => {
+        await loadState();
+      });
     </script>
   </body>
 </html>
