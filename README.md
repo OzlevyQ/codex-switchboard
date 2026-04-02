@@ -59,7 +59,7 @@ This is useful for moving profile sets between machines or sharing team-ready po
 
 ### Local dashboard
 
-The dashboard runs locally on `http://127.0.0.1:4317` and includes:
+The dashboard runs on `http://127.0.0.1:4317` by default and includes:
 
 - current Codex identity summary
 - profile list and activation
@@ -196,6 +196,20 @@ The server listens on:
 ```text
 http://127.0.0.1:4317
 ```
+
+To expose it to your network:
+
+```bash
+HOST=0.0.0.0 PORT=4317 npm start
+```
+
+or:
+
+```bash
+HOST=0.0.0.0 codex ui
+```
+
+When started with `HOST=0.0.0.0`, Switchboard prints the detected network URLs in the terminal.
 
 ## State and Data Layout
 

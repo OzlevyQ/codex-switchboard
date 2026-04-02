@@ -32,7 +32,7 @@ import {
   decodePoolBundle,
 } from "./runtime/share-manager.mjs";
 
-const host = "127.0.0.1";
+const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 4317);
 const noListen = process.env.SWITCHBOARD_NO_LISTEN === "1";
 const shouldOpenBrowser = process.argv.includes("--open-browser");
@@ -58,6 +58,23 @@ function sendText(res, status, text, contentType = "text/plain; charset=utf-8") 
 
 function dashboardUrl() {
   return `http://${host}:${port}`;
+}
+
+function browserDashboardUrl() {
+  const browserHost = host === "0.0.0.0" ? "127.0.0.1" : host;
+  return `http://${browserHost}:${port}`;
+}
+
+function networkDashboardUrls() {
+  if (host !== "0.0.0.0") {
+    return [];
+  }
+
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((entry) => entry && entry.family === "IPv4" && !entry.internal)
+    .map((entry) => `http://${entry.address}:${port}`)
+    .sort();
 }
 
 function openBrowser(url) {
@@ -566,10 +583,13 @@ if (noListen) {
 } else {
   server.on("error", (error) => {
     if (error && error.code === "EADDRINUSE") {
-      console.log(`Codex Switchboard already running at ${dashboardUrl()}`);
+      console.log(`Codex Switchboard already running at ${browserDashboardUrl()}`);
+      for (const url of networkDashboardUrls()) {
+        console.log(`Network access: ${url}`);
+      }
       if (shouldOpenBrowser) {
         try {
-          openBrowser(dashboardUrl());
+          openBrowser(browserDashboardUrl());
         } catch {
           // Ignore browser open failures and keep the process exit code clean.
         }
@@ -582,10 +602,13 @@ if (noListen) {
   });
 
   server.listen(port, host, () => {
-    console.log(`Codex Switchboard running at ${dashboardUrl()}`);
+    console.log(`Codex Switchboard running at ${browserDashboardUrl()}`);
+    for (const url of networkDashboardUrls()) {
+      console.log(`Network access: ${url}`);
+    }
     if (shouldOpenBrowser) {
       try {
-        openBrowser(dashboardUrl());
+        openBrowser(browserDashboardUrl());
       } catch {
         // Ignore browser open failures so the dashboard server can still run.
       }
