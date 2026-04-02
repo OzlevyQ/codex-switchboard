@@ -1,0 +1,21 @@
+{
+  "projectTitle": "Codex Switchboard Commercial Plan",
+  "deviceType": "DESKTOP",
+  "prompts": [
+    {
+      "id": "editorial-brief",
+      "title": "Editorial Brief",
+      "prompt": "Design a desktop strategy document page for a developer tool called Codex Switchboard. Avoid cards. The layout should feel like a premium editorial brief or product strategy memo. Use a warm paper background, strong typography, clean section dividers, structured tables, and a right-side JSON editor panel. The page must include sections for North Star, Positioning, Execution Phases, Pricing, Go To Market, Metrics, Risks, and Immediate Checklist. Make it feel sober, premium, and highly readable."
+    },
+    {
+      "id": "terminal-ops",
+      "title": "Terminal Operations",
+      "prompt": "Design a desktop planning interface for Codex Switchboard that feels inspired by terminal operations and technical planning docs. Keep it minimal and sharp, with a split layout: main strategic content on the left and editable JSON on the right. Use restrained color, subtle green accents, monospace labels, and table-driven content. No floating cards, no dribbble style, no glassmorphism. It should look like a serious internal ops tool for founders and engineers."
+    },
+    {
+      "id": "product-memo",
+      "title": "Product Memo",
+      "prompt": "Create a desktop founder memo page for commercializing Codex Switchboard. The layout should look like a product memo or board-prep document: a strong masthead, concise summary blocks, long-form sections, plain tables, and a fixed sidebar JSON editor. Use elegant serif typography with modern monospace accents. The tone should be premium, clear, and practical. No card-based UI. Prioritize readability, hierarchy, and a sense of strategy over decorative UI."
+    }
+  ]
+}

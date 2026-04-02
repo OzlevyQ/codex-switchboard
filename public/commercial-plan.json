@@ -1,0 +1,177 @@
+{
+  "product": {
+    "name": "Codex Switchboard",
+    "tagline": "The multi-account workspace layer for Codex",
+    "summary": "A commercial path for turning Codex Switchboard from a useful wrapper into a reliable product for freelancers, agencies, and teams."
+  },
+  "northStar": {
+    "title": "North Star",
+    "goal": "Make multi-account Codex usage feel native, safe, and team-ready without breaking local history or project context.",
+    "successMetric": "Weekly active users who switch accounts at least 3 times per week and keep Codex Switchboard installed for 30+ days."
+  },
+  "positioning": [
+    {
+      "title": "For freelancers",
+      "description": "Switch between personal, client, and work identities without losing project continuity."
+    },
+    {
+      "title": "For agencies",
+      "description": "Assign Codex identities by client and keep context, policies, and access organized."
+    },
+    {
+      "title": "For teams",
+      "description": "Centralize profile management, onboarding, and account controls across multiple developers."
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Stabilize The Core",
+      "timeline": "2-4 weeks",
+      "outcome": "Turn the current utility into a reliable product foundation.",
+      "items": [
+        "Installer self-check and rollback",
+        "Health diagnostics screen",
+        "Profile export/import",
+        "Safer backup model across pnpm, npm, Homebrew, and Windows shims",
+        "Telemetry hooks for anonymous install and command usage",
+        "Better error states and recovery guidance"
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Define The Paid Value",
+      "timeline": "3-5 weeks",
+      "outcome": "Move beyond account switching into workflow management.",
+      "items": [
+        "Per-project profile presets",
+        "Project rules for preferred account and startup behavior",
+        "Workspace catalog with project-to-profile mapping",
+        "Account notes, labels, and environment hints",
+        "Desktop-grade onboarding and polished first-run flow"
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Commercial MVP",
+      "timeline": "4-6 weeks",
+      "outcome": "Ship a version people can pay for.",
+      "items": [
+        "Cloud sync for profiles and project mappings",
+        "Encrypted backup and restore",
+        "License handling",
+        "Paid plan gating",
+        "Landing page and self-serve checkout",
+        "Support workflows and issue triage"
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Team Product",
+      "timeline": "6-10 weeks",
+      "outcome": "Add real B2B leverage.",
+      "items": [
+        "Shared workspace policies",
+        "Team-managed profile templates",
+        "Audit events and admin visibility",
+        "Member invites and seat management",
+        "Org-wide config sync",
+        "Customer-facing admin dashboard"
+      ]
+    }
+  ],
+  "pricing": [
+    {
+      "plan": "Free",
+      "price": "$0",
+      "fit": "Solo developers testing the workflow",
+      "features": [
+        "Basic account switching",
+        "Local saved profiles",
+        "Manual dashboard usage"
+      ]
+    },
+    {
+      "plan": "Pro",
+      "price": "$12-19/mo",
+      "fit": "Freelancers and power users",
+      "features": [
+        "Project presets",
+        "Cloud sync",
+        "Encrypted backup",
+        "Priority updates",
+        "Advanced launcher controls"
+      ]
+    },
+    {
+      "plan": "Team",
+      "price": "$39-99/mo + seats",
+      "fit": "Agencies and internal dev teams",
+      "features": [
+        "Shared profiles and policies",
+        "Admin controls",
+        "Audit history",
+        "Managed onboarding",
+        "Team workspace sync"
+      ]
+    }
+  ],
+  "goToMarket": {
+    "channels": [
+      "GitHub and dev Twitter/X launch",
+      "Product Hunt or similar dev tool launch",
+      "Direct outreach to freelancers and agencies using multiple AI coding accounts",
+      "Demo videos showing personal vs client account workflows"
+    ],
+    "proofPoints": [
+      "No lost local history",
+      "Works in the same folder and same machine context",
+      "One-line install across macOS, Linux, and Windows",
+      "Fast account switching without re-setup friction"
+    ]
+  },
+  "metrics": [
+    {
+      "name": "Activation",
+      "target": "70% of installs complete first successful profile save"
+    },
+    {
+      "name": "Retention",
+      "target": "40% weekly retention after 30 days"
+    },
+    {
+      "name": "Conversion",
+      "target": "5-10% free to paid once sync and project presets exist"
+    },
+    {
+      "name": "Expansion",
+      "target": "20% of paid accounts connect 2+ projects"
+    }
+  ],
+  "risks": [
+    {
+      "title": "Feature, not company",
+      "mitigation": "Sell workflow management, sync, and team controls instead of only auth switching."
+    },
+    {
+      "title": "CLI changes upstream",
+      "mitigation": "Invest in compatibility tests and fallback install strategies."
+    },
+    {
+      "title": "Security trust barrier",
+      "mitigation": "Document exactly what is stored, encrypt cloud sync, and provide local-only mode."
+    },
+    {
+      "title": "Easy to copy",
+      "mitigation": "Win on reliability, UX, onboarding, and team workflows."
+    }
+  ],
+  "executionChecklist": [
+    "Add product analytics hooks",
+    "Create landing page with waitlist",
+    "Record 60-second demo",
+    "Write positioning copy for Free / Pro / Team",
+    "Build export/import and diagnostics first",
+    "Design team-mode schema before coding sync"
+  ]
+}

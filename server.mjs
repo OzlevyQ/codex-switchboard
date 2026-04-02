@@ -12,6 +12,25 @@ import {
 } from "node:fs";
 import { extname, join } from "node:path";
 import os from "node:os";
+import {
+  listPools,
+  getActivePoolName,
+  getProfileState,
+  createPool,
+  deletePool,
+  addProfileToPool,
+  removeProfileFromPool,
+  setActivePool,
+  setPoolAutoSwitch,
+  resetProfileExhausted,
+  resetAllExhaustedInPool,
+} from "./runtime/pool-manager.mjs";
+import {
+  exportProfileBundle,
+  importProfileBundle,
+  exportPoolBundle,
+  decodePoolBundle,
+} from "./runtime/share-manager.mjs";
 
 const host = "127.0.0.1";
 const port = Number(process.env.PORT || 4317);
@@ -245,10 +264,18 @@ async function handleApi(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/state") {
     const codexStatus = await runCodexStatus();
+    const profiles = listProfiles();
+    const pools = listPools();
+    const profilesWithState = profiles.map((p) => ({
+      ...p,
+      state: getProfileState(p.name),
+    }));
     sendJson(res, 200, {
       currentAuth: currentAuthInfo(),
       identity: decodeCurrentIdentity(),
-      profiles: listProfiles(),
+      profiles: profilesWithState,
+      pools,
+      activePool: getActivePoolName(),
       meta: readMeta(),
       codexStatus,
       paths: {
@@ -320,6 +347,197 @@ async function handleApi(req, res) {
     rmSync(authFile, { force: true });
     const meta = readMeta();
     writeMeta({ activeProfile: meta.activeProfile || null });
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  // ─── Pool endpoints ────────────────────────────────────────────────────────
+
+  if (req.method === "GET" && url.pathname === "/api/pools") {
+    sendJson(res, 200, { pools: listPools(), activePool: getActivePoolName() });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/create") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    if (!name) {
+      sendJson(res, 400, { error: "Pool name is required" });
+      return true;
+    }
+    try {
+      createPool(name, body.strategy || "round-robin");
+      sendJson(res, 200, { ok: true, name });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/delete") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    if (!name) {
+      sendJson(res, 400, { error: "Pool name is required" });
+      return true;
+    }
+    deletePool(name);
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/add-profile") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const pool = safeName(body.pool);
+    const profile = safeName(body.profile);
+    if (!pool || !profile) {
+      sendJson(res, 400, { error: "pool and profile are required" });
+      return true;
+    }
+    try {
+      addProfileToPool(pool, profile);
+      sendJson(res, 200, { ok: true });
+    } catch (err) {
+      sendJson(res, 404, { error: err.message });
+    }
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/remove-profile") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const pool = safeName(body.pool);
+    const profile = safeName(body.profile);
+    if (!pool || !profile) {
+      sendJson(res, 400, { error: "pool and profile are required" });
+      return true;
+    }
+    try {
+      removeProfileFromPool(pool, profile);
+      sendJson(res, 200, { ok: true });
+    } catch (err) {
+      sendJson(res, 404, { error: err.message });
+    }
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/set-active") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = body.name ? safeName(body.name) : null;
+    try {
+      setActivePool(name);
+      sendJson(res, 200, { ok: true });
+    } catch (err) {
+      sendJson(res, 404, { error: err.message });
+    }
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/set-autoswitch") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    if (!name) {
+      sendJson(res, 400, { error: "Pool name is required" });
+      return true;
+    }
+    try {
+      setPoolAutoSwitch(name, Boolean(body.enabled));
+      sendJson(res, 200, { ok: true });
+    } catch (err) {
+      sendJson(res, 404, { error: err.message });
+    }
+    return true;
+  }
+
+  // ─── Share endpoints ───────────────────────────────────────────────────────
+
+  if (req.method === "POST" && url.pathname === "/api/profiles/export") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    const passphrase = String(body.passphrase || "").trim();
+    if (!name) { sendJson(res, 400, { error: "Profile name is required" }); return true; }
+    if (!passphrase) { sendJson(res, 400, { error: "Passphrase is required" }); return true; }
+    try {
+      const result = await exportProfileBundle(name, passphrase);
+      sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      sendJson(res, err.code === "ENOENT" ? 404 : 400, { error: err.message });
+    }
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/profiles/import") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const bundle = String(body.bundle || "").trim();
+    const passphrase = String(body.passphrase || "").trim();
+    const nameOverride = body.name ? safeName(body.name) : null;
+    if (!bundle) { sendJson(res, 400, { error: "Bundle is required" }); return true; }
+    if (!passphrase) { sendJson(res, 400, { error: "Passphrase is required" }); return true; }
+    try {
+      const result = await importProfileBundle(bundle, passphrase, nameOverride, profilesDir);
+      sendJson(res, 200, { ok: true, ...result });
+    } catch (err) {
+      sendJson(res, err.conflict ? 409 : 400, { error: err.message, suggestion: err.suggestion });
+    }
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/export") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const name = safeName(body.name);
+    if (!name) { sendJson(res, 400, { error: "Pool name is required" }); return true; }
+    const pools = listPools();
+    const pool = pools.find((p) => p.name === name);
+    if (!pool) { sendJson(res, 404, { error: "Pool not found" }); return true; }
+    sendJson(res, 200, { ok: true, ...exportPoolBundle(pool) });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/import") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const bundle = String(body.bundle || "").trim();
+    const nameOverride = body.name ? safeName(body.name) : null;
+    if (!bundle) { sendJson(res, 400, { error: "Bundle is required" }); return true; }
+    let pool;
+    try {
+      pool = decodePoolBundle(bundle);
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+      return true;
+    }
+    const finalName = nameOverride || pool.name;
+    try {
+      createPool(finalName, pool.strategy);
+    } catch {
+      // pool already exists — update it in place
+    }
+    // Add profiles that exist locally; skip unknown ones and report them
+    const allProfiles = listProfiles();
+    const knownNames = new Set(allProfiles.map((p) => p.name));
+    const added = [], skipped = [];
+    for (const pName of pool.profiles) {
+      if (knownNames.has(pName)) {
+        try { addProfileToPool(finalName, pName); added.push(pName); } catch {}
+      } else {
+        skipped.push(pName);
+      }
+    }
+    try { setPoolAutoSwitch(finalName, pool.autoSwitch); } catch {}
+    sendJson(res, 200, { ok: true, poolName: finalName, added, skipped });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/pools/reset-exhausted") {
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const pool = body.pool ? safeName(body.pool) : null;
+    const profile = body.profile ? safeName(body.profile) : null;
+    if (pool) {
+      resetAllExhaustedInPool(pool);
+    } else if (profile) {
+      resetProfileExhausted(profile);
+    } else {
+      sendJson(res, 400, { error: "pool or profile is required" });
+      return true;
+    }
     sendJson(res, 200, { ok: true });
     return true;
   }

@@ -1,545 +1,943 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Codex Switchboard</title>
-    <style>
-      :root {
-        --bg: #f2efe8;
-        --panel: rgba(255, 252, 246, 0.82);
-        --panel-strong: #fff9ee;
-        --ink: #1e1b16;
-        --muted: #655c50;
-        --line: rgba(49, 39, 25, 0.12);
-        --accent: #0f766e;
-        --accent-2: #d97706;
-        --danger: #b42318;
-        --shadow: 0 20px 60px rgba(71, 54, 31, 0.14);
-      }
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Codex Switchboard</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      * {
-        box-sizing: border-box;
-      }
+:root {
+  --bg:      #0f0f12;
+  --s1:      #16161a;
+  --s2:      #1c1c22;
+  --s3:      #222228;
+  --border:  #2a2a34;
+  --text:    #e2e2e7;
+  --muted:   #6b6b7b;
+  --accent:  #22d3ee;
+  --green:   #4ade80;
+  --red:     #f87171;
+  --orange:  #fb923c;
+}
 
-      body {
-        margin: 0;
-        font-family: "Iowan Old Style", "Palatino Linotype", serif;
-        color: var(--ink);
-        background:
-          radial-gradient(circle at top left, rgba(217, 119, 6, 0.18), transparent 24%),
-          radial-gradient(circle at top right, rgba(15, 118, 110, 0.15), transparent 20%),
-          linear-gradient(180deg, #f5f2ea 0%, #ece5d6 100%);
-        min-height: 100vh;
-      }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
 
-      .shell {
-        width: min(1100px, calc(100% - 32px));
-        margin: 32px auto;
-      }
+/* ── Topbar ── */
+.topbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.logo {
+  font: 600 13px/1 ui-monospace, monospace;
+  color: var(--accent);
+  letter-spacing: .05em;
+}
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-identity {
+  font: 12px/1 ui-monospace, monospace;
+  color: var(--muted);
+  padding: 5px 10px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.topbar-identity span { color: var(--accent); }
 
-      .hero {
-        display: grid;
-        gap: 12px;
-        margin-bottom: 20px;
-      }
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--s1);
+  overflow-x: auto;
+}
+.tab {
+  padding: 8px 16px;
+  font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color .15s;
+}
+.tab:hover { color: var(--text); opacity: 1; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-      .eyebrow {
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-        color: var(--accent);
-      }
+/* ── Page body ── */
+.page { max-width: 900px; margin: 0 auto; padding: 24px; }
 
-      h1 {
-        margin: 0;
-        font-size: clamp(34px, 5vw, 64px);
-        line-height: 0.95;
-      }
+/* ── Tab panels ── */
+.panel { display: none; }
+.panel.active { display: block; }
 
-      .subtitle {
-        max-width: 720px;
-        margin: 0;
-        color: var(--muted);
-        font-size: 18px;
-      }
+/* ── Section titles ── */
+.section-title {
+  font: 700 11px/1 ui-monospace, monospace;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 12px;
+}
 
-      .grid {
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 18px;
-      }
+/* ── Card ── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.card-header {
+  padding: 11px 16px;
+  font: 600 11px/1 ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  background: var(--s2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-body { padding: 16px; }
 
-      .card {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(12px);
-        padding: 20px;
-      }
+/* ── Two-column layout ── */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .cols, .cols-3 { grid-template-columns: 1fr; } }
 
-      .card h2 {
-        margin: 0 0 16px;
-        font-size: 24px;
-      }
+/* ── Form controls ── */
+input, select, textarea {
+  width: 100%;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  outline: none;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--muted); }
+textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
 
-      .meta-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-      }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input, .row select { flex: 1; }
 
-      .stat {
-        background: var(--panel-strong);
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 14px;
-      }
+/* ── Buttons ── */
+button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .15s, background .15s;
+}
+button:disabled { opacity: .4; cursor: not-allowed; }
+button:not(:disabled):hover { opacity: .8; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+.btn-ghost   { background: var(--s3); color: var(--text); border-color: var(--border); }
+.btn-danger  { background: transparent; color: var(--red); border-color: color-mix(in srgb, var(--red) 25%, transparent); }
+.btn-full    { width: 100%; }
 
-      .stat .label {
-        display: block;
-        font: 600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
-        margin-bottom: 8px;
-      }
+/* ── Badge ── */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font: 700 10px/1.4 ui-monospace, monospace;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.badge-active    { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.badge-pool      { background: color-mix(in srgb, var(--green) 12%, transparent);  color: var(--green); }
+.badge-exhausted { background: color-mix(in srgb, var(--orange) 12%, transparent); color: var(--orange); }
 
-      .stat .value {
-        font-size: 16px;
-        word-break: break-word;
-      }
+/* ── Profile item ── */
+.profile-item {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--s2);
+  margin-bottom: 8px;
+}
+.profile-item.is-active   { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.profile-item.is-exhausted{ border-color: color-mix(in srgb, var(--orange) 35%, transparent); }
+.profile-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.profile-name { font: 600 13px/1 ui-monospace, monospace; }
+.profile-badges { display: flex; gap: 4px; }
+.profile-detail { font: 11px/1.4 ui-monospace, monospace; color: var(--muted); margin-bottom: 10px; }
+.profile-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
-      .row {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
+/* ── Pool item ── */
+.pool-item {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--s2);
+  margin-bottom: 8px;
+}
+.pool-item.is-active { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.pool-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pool-name { font: 600 13px/1 ui-monospace, monospace; }
+.pool-head-actions { display: flex; gap: 6px; align-items: center; }
+.pool-members { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.pool-member {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 8px;
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 12px/1 ui-monospace, monospace;
+  gap: 8px;
+}
+.pool-member.is-exhausted { color: var(--orange); }
+.pool-member-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-member-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.pool-add-row { display: flex; gap: 6px; margin-top: 8px; }
+.pool-add-row select { flex: 1; font-size: 12px; }
 
-      input {
-        width: 100%;
-        border: 1px solid var(--line);
-        background: #fffdf8;
-        color: var(--ink);
-        border-radius: 14px;
-        padding: 12px 14px;
-        font: inherit;
-      }
+/* ── Toggle ── */
+.toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; }
+.toggle-label { font-size: 12px; color: var(--muted); user-select: none; }
+.toggle {
+  width: 32px; height: 18px; border-radius: 9px;
+  background: var(--s3); border: 1px solid var(--border);
+  position: relative; transition: background .2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); border-color: var(--accent); }
+.toggle::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.toggle.on::after { transform: translateX(14px); }
 
-      button {
-        border: 0;
-        border-radius: 999px;
-        padding: 11px 16px;
-        font: 600 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-        cursor: pointer;
-        transition: transform 120ms ease, opacity 120ms ease;
-      }
+/* ── Terminal ── */
+.terminal {
+  font: 12px/1.7 ui-monospace, monospace;
+  color: var(--accent);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 80px;
+  max-height: 240px;
+  overflow-y: auto;
+}
 
-      button:disabled {
-        cursor: wait;
-        opacity: 0.65;
-        transform: none;
-      }
+/* ── Stat grid ── */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.stat-cell { background: var(--s2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+.stat-label { font: 600 10px/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 5px; }
+.stat-value { font: 12px/1.3 ui-monospace, monospace; word-break: break-all; }
 
-      button:hover {
-        transform: translateY(-1px);
-      }
+/* ── Share bundle ── */
+.bundle-out {
+  display: none; margin-top: 8px;
+  font: 11px/1.6 ui-monospace, monospace;
+  color: var(--accent); background: var(--bg);
+}
+.pw-row { position: relative; margin-bottom: 8px; }
+.pw-row input { padding-right: 48px; }
+.pw-toggle {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); font-size: 11px;
+  cursor: pointer; padding: 2px 4px;
+}
+.pw-toggle:hover { color: var(--text); opacity: 1; }
 
-      .primary {
-        background: var(--accent);
-        color: white;
-      }
+/* ── Divider ── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
-      .secondary {
-        background: #efe5d2;
-        color: #3b3124;
-      }
+/* ── Hint ── */
+.hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.hint code { font-family: ui-monospace, monospace; color: var(--accent); }
 
-      .danger {
-        background: #f8dfdb;
-        color: var(--danger);
-      }
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  padding: 10px 16px; border-radius: 6px;
+  font: 12px/1.4 ui-monospace, monospace;
+  background: var(--s3); border: 1px solid var(--border); color: var(--text);
+  opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 100;
+  max-width: 340px;
+}
+#toast.show { opacity: 1; }
+#toast.err  { border-color: var(--red); color: var(--red); }
 
-      .profiles {
-        display: grid;
-        gap: 12px;
-      }
+/* ── Busy state ── */
+body.busy button, body.busy input, body.busy select, body.busy textarea {
+  opacity: .45; pointer-events: none;
+}
 
-      .profile {
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: rgba(255, 250, 242, 0.82);
-        padding: 14px;
-      }
+/* ── Empty state ── */
+.empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+</style>
+</head>
+<body>
 
-      .profile.active {
-        outline: 2px solid rgba(15, 118, 110, 0.25);
-      }
+<!-- Topbar -->
+<div class="topbar">
+  <span class="logo">⌁ codex-switchboard</span>
+  <div class="topbar-right">
+    <div class="topbar-identity">
+      <span id="topEmail">loading…</span>
+    </div>
+    <button class="btn-ghost btn-sm" id="refreshBtn">↺ Refresh</button>
+  </div>
+</div>
 
-      .profile-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 10px;
-      }
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" data-tab="profiles">Profiles</button>
+  <button class="tab" data-tab="pools">Pools</button>
+  <button class="tab" data-tab="share">Share</button>
+  <button class="tab" data-tab="status">Status</button>
+</div>
 
-      .profile-name {
-        font-size: 20px;
-      }
+<div class="page">
 
-      .pill {
-        padding: 5px 10px;
-        border-radius: 999px;
-        background: #dff4f1;
-        color: var(--accent);
-        font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
+  <!-- ═══ TAB: Profiles ═══ -->
+  <div class="panel active" id="tab-profiles">
 
-      .profile-meta {
-        color: var(--muted);
-        display: grid;
-        gap: 4px;
-        font-size: 14px;
-        margin-bottom: 12px;
-      }
+    <div class="cols">
 
-      .status-box {
-        white-space: pre-wrap;
-        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-        background: #f9f4ea;
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 14px;
-      }
+      <!-- Save current -->
+      <div>
+        <div class="card">
+          <div class="card-header">Save current login</div>
+          <div class="card-body">
+            <div class="row" style="margin-bottom:10px">
+              <input id="profileNameInput" type="text" placeholder="e.g. work, client-a" />
+              <button class="btn-primary" id="saveCurrentBtn">Save</button>
+            </div>
+            <p class="hint">Run <code>codex login</code> first, then save here.</p>
+          </div>
+        </div>
+      </div>
 
-      .hint {
-        color: var(--muted);
-        font-size: 14px;
-      }
+      <!-- Current auth quick-view -->
+      <div>
+        <div class="card">
+          <div class="card-header">Active identity</div>
+          <div class="card-body">
+            <div class="stat-grid" id="identityGrid">
+              <div class="stat-cell"><div class="stat-label">Email</div><div class="stat-value" id="iEmail">—</div></div>
+              <div class="stat-cell"><div class="stat-label">Profile</div><div class="stat-value" id="iProfile">—</div></div>
+              <div class="stat-cell"><div class="stat-label">Account ID</div><div class="stat-value" id="iAccount">—</div></div>
+              <div class="stat-cell"><div class="stat-label">Auth mode</div><div class="stat-value" id="iMode">—</div></div>
+            </div>
+            <button class="btn-danger btn-sm btn-full" id="clearAuthBtn">Clear current auth</button>
+          </div>
+        </div>
+      </div>
 
-      .busy {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
+    </div>
 
-      .busy::before {
-        content: "";
-        width: 12px;
-        height: 12px;
-        border-radius: 999px;
-        border: 2px solid rgba(255, 255, 255, 0.35);
-        border-top-color: currentColor;
-        animation: spin 0.8s linear infinite;
-      }
+    <!-- Profile list -->
+    <div class="card">
+      <div class="card-header">All profiles</div>
+      <div class="card-body" id="profilesList">
+        <div class="empty">Loading…</div>
+      </div>
+    </div>
 
-      .secondary.busy::before,
-      .danger.busy::before {
-        border-color: rgba(30, 27, 22, 0.18);
-        border-top-color: currentColor;
-      }
+  </div>
 
-      .app-loading {
-        opacity: 0.8;
-      }
+  <!-- ═══ TAB: Pools ═══ -->
+  <div class="panel" id="tab-pools">
 
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .notice {
-        margin-top: 14px;
-        color: #5f4f2e;
-        background: #f8ecd2;
-        border: 1px solid rgba(174, 112, 20, 0.2);
-        border-radius: 16px;
-        padding: 12px 14px;
-        font-size: 14px;
-      }
-
-      @media (max-width: 900px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-
-        .meta-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="shell">
-      <section class="hero">
-        <div class="eyebrow">Codex Account Dashboard</div>
-        <h1>Switch auth. Keep local history.</h1>
-        <p class="subtitle">
-          This dashboard swaps only <code>~/.codex/auth.json</code>, so Codex keeps using the same
-          local machine history, the same workspace state, and the same folder context.
+    <!-- Create new pool -->
+    <div class="card">
+      <div class="card-header">
+        Create pool
+      </div>
+      <div class="card-body">
+        <p class="hint" style="margin-bottom:12px">
+          A pool is a group of profiles. When Codex exits because tokens are exhausted on the
+          active profile, the launcher automatically switches to the next non-exhausted profile in
+          the active pool and retries.
         </p>
-      </section>
-
-      <section class="grid">
-        <div class="card">
-          <h2>Profiles</h2>
-          <div class="row" style="margin-bottom: 12px">
-            <input id="profileName" placeholder="profile name, for example work or client-a" />
-            <button class="primary" id="saveCurrent">Save current login as profile</button>
-          </div>
-          <div class="hint" style="margin-bottom: 16px">
-            To add a new user: run <code>codex login</code> in Terminal first, then save the
-            current auth here as a named profile.
-          </div>
-          <div id="profiles" class="profiles"></div>
+        <div class="row">
+          <input id="poolNameInput" type="text" placeholder="Pool name, e.g. team or agency-x" />
+          <button class="btn-primary" id="createPoolBtn">Create</button>
         </div>
+      </div>
+    </div>
 
+    <!-- Pool list -->
+    <div class="card">
+      <div class="card-header">Pools <span id="activePoolLabel" style="margin-left:6px"></span></div>
+      <div class="card-body" id="poolsList">
+        <div class="empty">Loading…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ TAB: Share ═══ -->
+  <div class="panel" id="tab-share">
+
+    <div class="cols">
+
+      <!-- Share profiles -->
+      <div>
         <div class="card">
-          <h2>Current Codex</h2>
-          <div id="meta" class="meta-grid"></div>
-          <div style="height: 14px"></div>
-          <div class="row">
-            <button class="secondary" id="refresh">Refresh</button>
-            <button class="danger" id="clearAuth">Clear current auth</button>
-          </div>
-          <div style="height: 14px"></div>
-          <div class="status-box" id="statusBox">Loading...</div>
-          <div class="notice">
-            Workflow: activate a saved profile here, then run <code>codex</code> normally in the
-            same folder. The CLI will use the selected login but keep the existing local history DB.
+          <div class="card-header">Share a profile</div>
+          <div class="card-body">
+            <p class="hint" style="margin-bottom:14px">
+              Export an encrypted bundle. Send it to a teammate — they import it and can add
+              your account to their pool.
+            </p>
+
+            <div class="section-title">Export</div>
+            <select id="exportProfileSel" style="margin-bottom:8px">
+              <option value="">Select profile…</option>
+            </select>
+            <div class="pw-row">
+              <input id="exportPassphrase" type="password" placeholder="Passphrase (send separately)" autocomplete="new-password" />
+              <button class="pw-toggle" data-target="exportPassphrase">show</button>
+            </div>
+            <button class="btn-primary btn-full" id="exportBtn">Generate bundle</button>
+            <textarea id="bundleOut" class="bundle-out" rows="4" readonly></textarea>
+            <div id="exportHint" class="hint" style="display:none;margin-top:6px"></div>
+            <button class="btn-ghost btn-sm btn-full" id="copyBundleBtn" style="margin-top:6px;display:none">Copy to clipboard</button>
+
+            <hr class="divider" />
+
+            <div class="section-title">Import</div>
+            <textarea id="importBundleInput" rows="3" placeholder="Paste SWB1_... bundle here" style="margin-bottom:8px"></textarea>
+            <div class="pw-row">
+              <input id="importPassphrase" type="password" placeholder="Passphrase from sender" autocomplete="new-password" />
+              <button class="pw-toggle" data-target="importPassphrase">show</button>
+            </div>
+            <input id="importNameInput" type="text" placeholder="Profile name (auto-assigned if blank)" style="margin-bottom:8px" />
+            <button class="btn-primary btn-full" id="importBtn">Import profile</button>
           </div>
         </div>
-      </section>
+      </div>
 
-    </main>
+      <!-- Share pools -->
+      <div>
+        <div class="card">
+          <div class="card-header">Share a pool</div>
+          <div class="card-body">
+            <p class="hint" style="margin-bottom:14px">
+              Export a pool config (no secrets — pools contain only profile names and settings).
+              The recipient imports it; profiles they already have are added automatically.
+            </p>
 
-    <script>
-      const profileNameInput = document.getElementById("profileName");
-      const profilesEl = document.getElementById("profiles");
-      const metaEl = document.getElementById("meta");
-      const statusBox = document.getElementById("statusBox");
-      const saveCurrentButton = document.getElementById("saveCurrent");
-      const refreshButton = document.getElementById("refresh");
-      const clearAuthButton = document.getElementById("clearAuth");
-      let pendingCount = 0;
+            <div class="section-title">Export</div>
+            <select id="exportPoolSel" style="margin-bottom:8px">
+              <option value="">Select pool…</option>
+            </select>
+            <button class="btn-primary btn-full" id="exportPoolBtn">Export pool</button>
+            <textarea id="poolBundleOut" class="bundle-out" rows="3" readonly></textarea>
+            <button class="btn-ghost btn-sm btn-full" id="copyPoolBundleBtn" style="margin-top:6px;display:none">Copy to clipboard</button>
 
-      async function request(path, options = {}) {
-        const response = await fetch(path, {
-          headers: { "Content-Type": "application/json" },
-          ...options,
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "Request failed");
-        }
-        return data;
-      }
+            <hr class="divider" />
 
-      function row(label, value) {
-        return `
-          <div class="stat">
-            <span class="label">${escapeHtml(label)}</span>
-            <div class="value">${escapeHtml(value || "-")}</div>
+            <div class="section-title">Import</div>
+            <textarea id="importPoolInput" rows="3" placeholder="Paste SWP1_... pool bundle here" style="margin-bottom:8px"></textarea>
+            <input id="importPoolNameInput" type="text" placeholder="Pool name (optional)" style="margin-bottom:8px" />
+            <button class="btn-primary btn-full" id="importPoolBtn">Import pool</button>
+            <div id="importPoolResult" class="hint" style="display:none;margin-top:8px"></div>
           </div>
-        `;
-      }
+        </div>
+      </div>
 
-      function escapeHtml(value) {
-        return String(value ?? "")
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#39;");
-      }
+    </div>
+  </div>
 
-      function setAppBusy(isBusy) {
-        document.body.classList.toggle("app-loading", isBusy);
-        const controls = document.querySelectorAll("button, input");
-        controls.forEach((control) => {
-          control.disabled = isBusy;
-        });
-      }
+  <!-- ═══ TAB: Status ═══ -->
+  <div class="panel" id="tab-status">
 
-      function setButtonBusy(button, isBusy, busyLabel) {
-        if (!button) {
-          return;
-        }
+    <div class="cols">
 
-        if (isBusy) {
-          if (!button.dataset.originalText) {
-            button.dataset.originalText = button.textContent;
-          }
-          button.textContent = busyLabel;
-          button.classList.add("busy");
-        } else {
-          button.textContent = button.dataset.originalText || button.textContent;
-          button.classList.remove("busy");
-        }
-      }
+      <div>
+        <div class="card">
+          <div class="card-header">Auth file</div>
+          <div class="card-body">
+            <div class="stat-grid" id="metaGrid"></div>
+          </div>
+        </div>
+      </div>
 
-      async function withBusy(button, busyLabel, action) {
-        pendingCount += 1;
-        setAppBusy(true);
-        setButtonBusy(button, true, busyLabel);
-        try {
-          return await action();
-        } finally {
-          setButtonBusy(button, false, busyLabel);
-          pendingCount = Math.max(0, pendingCount - 1);
-          if (pendingCount === 0) {
-            setAppBusy(false);
-          }
-        }
-      }
+      <div>
+        <div class="card">
+          <div class="card-header">Active pool</div>
+          <div class="card-body">
+            <div class="stat-grid" id="poolStatusGrid"></div>
+          </div>
+        </div>
+      </div>
 
-      function renderState(data) {
-        const auth = data.currentAuth || {};
-        metaEl.innerHTML = [
-          row("Auth file", auth.exists ? "~/.codex/auth.json present" : "No current auth file"),
-          row("Auth mode", auth.authMode || (auth.invalid ? "Invalid auth.json" : "Not logged in")),
-          row("User", data.identity?.name || "-"),
-          row("Email", data.identity?.email || "-"),
-          row("Account ID", auth.accountId || "-"),
-          row("Active profile", data.meta?.activeProfile || "-")
-        ].join("");
+    </div>
 
-        statusBox.textContent = [data.codexStatus?.stdout, data.codexStatus?.stderr]
-          .filter(Boolean)
-          .join("\n")
-          .trim() || "No status output.";
+    <div class="card">
+      <div class="card-header">codex login status</div>
+      <div class="card-body">
+        <div class="terminal" id="statusOutput">Loading…</div>
+      </div>
+    </div>
 
-        if (!data.profiles.length) {
-          profilesEl.innerHTML = `<div class="hint">No saved profiles yet.</div>`;
-          return;
-        }
+  </div>
 
-        profilesEl.innerHTML = data.profiles
-          .map(
-            (profile) => `
-              <div class="profile ${profile.active ? "active" : ""}">
-                <div class="profile-head">
-                  <div class="profile-name">${escapeHtml(profile.name)}</div>
-                  ${profile.active ? `<span class="pill">active</span>` : ""}
-                </div>
-                <div class="profile-meta">
-                  <div>mode: ${escapeHtml(profile.authMode || (profile.invalid ? "invalid" : "unknown"))}</div>
-                  <div>account: ${escapeHtml(profile.accountId || "-")}</div>
-                  <div>last refresh: ${escapeHtml(profile.lastRefresh || "-")}</div>
-                </div>
-                <div class="row">
-                  <button class="primary" data-action="activate" data-profile="${escapeHtml(profile.name)}">Activate</button>
-                  <button class="danger" data-action="delete" data-profile="${escapeHtml(profile.name)}">Delete</button>
-                </div>
-              </div>
-            `
-          )
-          .join("");
+</div><!-- .page -->
 
-        for (const button of profilesEl.querySelectorAll("button[data-action]")) {
-          button.addEventListener("click", async () => {
-            const name = button.dataset.profile;
-            if (button.dataset.action === "activate") {
-              await activateProfile(name, button);
-            } else if (button.dataset.action === "delete") {
-              await deleteProfile(name, button);
-            }
-          });
-        }
-      }
+<div id="toast"></div>
 
-      async function loadState(button = null) {
-        try {
-          if (!button) {
-            statusBox.textContent = "Loading dashboard state...";
-          }
-          const data = await request("/api/state");
-          renderState(data);
-        } catch (error) {
-          statusBox.textContent = error.message;
-        }
-      }
+<script>
+// ── Utilities ────────────────────────────────────────────────────────────────
+function esc(v) {
+  return String(v ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
 
-      async function activateProfile(name, button) {
-        try {
-          statusBox.textContent = `Activating ${name}...`;
-          await withBusy(button, "Activating...", async () => {
-            await request("/api/profiles/activate", {
-              method: "POST",
-              body: JSON.stringify({ name }),
-            });
-            await loadState();
-          });
-        } catch (error) {
-          statusBox.textContent = error.message;
-        }
-      }
+let _toastTimer;
+function toast(msg, isErr = false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "show" + (isErr ? " err" : "");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ""; }, 3500);
+}
 
-      async function deleteProfile(name, button) {
-        try {
-          statusBox.textContent = `Deleting ${name}...`;
-          await withBusy(button, "Deleting...", async () => {
-            await request("/api/profiles/delete", {
-              method: "POST",
-              body: JSON.stringify({ name }),
-            });
-            await loadState();
-          });
-        } catch (error) {
-          statusBox.textContent = error.message;
-        }
-      }
+let _busy = 0;
+function setBusy(on) {
+  _busy = Math.max(0, on ? _busy + 1 : _busy - 1);
+  document.body.classList.toggle("busy", _busy > 0);
+}
 
-      saveCurrentButton.addEventListener("click", async () => {
-        const name = profileNameInput.value.trim();
-        if (!name) {
-          statusBox.textContent = "Enter a profile name first.";
-          return;
-        }
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || "Request failed");
+  return d;
+}
 
-        try {
-          statusBox.textContent = `Saving ${name}...`;
-          await withBusy(saveCurrentButton, "Saving...", async () => {
-            await request("/api/profiles/save-current", {
-              method: "POST",
-              body: JSON.stringify({ name }),
-            });
-            profileNameInput.value = "";
-            await loadState();
-          });
-        } catch (error) {
-          statusBox.textContent = error.message;
-        }
-      });
+async function run(fn) {
+  setBusy(true);
+  try { return await fn(); }
+  catch (e) { toast(e.message, true); }
+  finally { setBusy(false); }
+}
 
-      refreshButton.addEventListener("click", async () => {
-        await withBusy(refreshButton, "Refreshing...", async () => {
-          await loadState(refreshButton);
-        });
-      });
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
 
-      clearAuthButton.addEventListener("click", async () => {
-        try {
-          statusBox.textContent = "Clearing current auth...";
-          await withBusy(clearAuthButton, "Clearing...", async () => {
-            await request("/api/current/clear-auth", { method: "POST" });
-            await loadState();
-          });
-        } catch (error) {
-          statusBox.textContent = error.message;
-        }
-      });
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderState(d) {
+  const id = d.identity || {}, auth = d.currentAuth || {};
 
-      window.activateProfile = activateProfile;
-      window.deleteProfile = deleteProfile;
-      withBusy(null, "", async () => {
-        await loadState();
-      });
-    </script>
-  </body>
+  // Topbar
+  document.getElementById("topEmail").innerHTML =
+    id.email ? `<span>${esc(id.email)}</span>` : "not logged in";
+
+  // Active identity (profiles tab)
+  document.getElementById("iEmail").textContent   = id.email || "—";
+  document.getElementById("iProfile").textContent = d.meta?.activeProfile || "—";
+  document.getElementById("iAccount").textContent = auth.accountId || "—";
+  document.getElementById("iMode").textContent    = auth.authMode || "—";
+
+  // Status tab
+  document.getElementById("metaGrid").innerHTML = [
+    ["Auth file",   auth.exists ? "present" : "missing"],
+    ["Auth mode",   auth.authMode || "—"],
+    ["User",        id.name || "—"],
+    ["Email",       id.email || "—"],
+  ].map(([l,v]) =>
+    `<div class="stat-cell"><div class="stat-label">${l}</div><div class="stat-value">${esc(v)}</div></div>`
+  ).join("");
+
+  document.getElementById("poolStatusGrid").innerHTML = [
+    ["Active pool",    d.activePool || "none"],
+    ["Pool profiles",  (() => {
+      if (!d.activePool) return "—";
+      const pool = (d.pools || []).find(p => p.name === d.activePool);
+      return pool ? `${pool.profiles.length} profile(s)` : "—";
+    })()],
+    ["Auto-switch",    (() => {
+      if (!d.activePool) return "—";
+      const pool = (d.pools || []).find(p => p.name === d.activePool);
+      return pool?.autoSwitch ? "enabled" : "disabled";
+    })()],
+    ["Exhausted",      (() => {
+      const profiles = d.profiles || [];
+      const n = profiles.filter(p => p.state?.exhausted).length;
+      return n ? `${n} profile(s)` : "none";
+    })()],
+  ].map(([l,v]) =>
+    `<div class="stat-cell"><div class="stat-label">${l}</div><div class="stat-value">${esc(v)}</div></div>`
+  ).join("");
+
+  const out = [d.codexStatus?.stdout, d.codexStatus?.stderr].filter(Boolean).join("\n").trim();
+  document.getElementById("statusOutput").textContent = out || "No output.";
+
+  // Active pool label in pools tab header
+  const apl = document.getElementById("activePoolLabel");
+  apl.innerHTML = d.activePool
+    ? `<span class="badge badge-pool">${esc(d.activePool)} active</span>` : "";
+
+  renderProfiles(d.profiles || []);
+  renderPools(d.pools || [], d.activePool, d.profiles || []);
+  populateShareDropdowns(d.profiles || [], d.pools || []);
+}
+
+// ── Profiles ──────────────────────────────────────────────────────────────────
+function renderProfiles(profiles) {
+  const el = document.getElementById("profilesList");
+  if (!profiles.length) {
+    el.innerHTML = `<div class="empty">No saved profiles yet. Run <code style="color:var(--accent);font-family:ui-monospace,monospace">codex login</code> then save above.</div>`;
+    return;
+  }
+  el.innerHTML = profiles.map(p => {
+    const ex = p.state?.exhausted;
+    return `<div class="profile-item ${p.active ? "is-active" : ""} ${ex ? "is-exhausted" : ""}">
+      <div class="profile-head">
+        <span class="profile-name">${esc(p.name)}</span>
+        <div class="profile-badges">
+          ${p.active ? `<span class="badge badge-active">active</span>` : ""}
+          ${ex ? `<span class="badge badge-exhausted">exhausted</span>` : ""}
+        </div>
+      </div>
+      <div class="profile-detail">${esc(p.email || p.identity?.email || "—")} · ${esc(p.accountId || "—")}</div>
+      <div class="profile-actions">
+        ${!p.active ? `<button class="btn-ghost btn-sm" data-act="activate" data-name="${esc(p.name)}">Activate</button>` : ""}
+        ${ex ? `<button class="btn-ghost btn-sm" data-act="reset" data-name="${esc(p.name)}">Reset</button>` : ""}
+        <button class="btn-danger btn-sm" data-act="delete" data-name="${esc(p.name)}">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
+    const { act, name } = b.dataset;
+    if (act === "activate") activateProfile(name);
+    else if (act === "delete") deleteProfile(name);
+    else if (act === "reset") resetExhausted(null, name);
+  }));
+}
+
+// ── Pools ─────────────────────────────────────────────────────────────────────
+function renderPools(pools, activePool, profiles) {
+  const el = document.getElementById("poolsList");
+  if (!pools.length) {
+    el.innerHTML = `<div class="empty">No pools yet. Create one above.</div>`;
+    return;
+  }
+  el.innerHTML = pools.map(pool => {
+    const isActive = pool.name === activePool;
+    const members = pool.profiles.map(name => {
+      const pd = profiles.find(x => x.name === name);
+      const ex = pd?.state?.exhausted;
+      return `<div class="pool-member ${ex ? "is-exhausted" : ""}">
+        <span class="pool-member-name">${esc(name)}${ex ? " — exhausted" : ""}</span>
+        <div class="pool-member-actions">
+          ${ex ? `<button class="btn-ghost btn-sm" data-act="reset" data-profile="${esc(name)}">Reset</button>` : ""}
+          <button class="btn-danger btn-sm" data-act="pool-remove" data-pool="${esc(pool.name)}" data-profile="${esc(name)}">×</button>
+        </div>
+      </div>`;
+    }).join("");
+
+    const available = profiles.filter(p => !pool.profiles.includes(p.name));
+    const addRow = available.length ? `
+      <div class="pool-add-row">
+        <select id="psel-${esc(pool.name)}">
+          <option value="">Add profile to pool…</option>
+          ${available.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("")}
+        </select>
+        <button class="btn-primary btn-sm" data-act="pool-add" data-pool="${esc(pool.name)}">Add</button>
+      </div>` : "";
+
+    return `<div class="pool-item ${isActive ? "is-active" : ""}">
+      <div class="pool-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="pool-name">${esc(pool.name)}</span>
+          ${isActive ? `<span class="badge badge-pool">active</span>` : ""}
+        </div>
+        <div class="pool-head-actions">
+          ${!isActive ? `<button class="btn-ghost btn-sm" data-act="set-active" data-pool="${esc(pool.name)}">Set active</button>` : ""}
+          <button class="btn-danger btn-sm" data-act="delete-pool" data-pool="${esc(pool.name)}">Delete</button>
+        </div>
+      </div>
+      <div class="toggle-row" data-act="toggle" data-pool="${esc(pool.name)}">
+        <div class="toggle ${pool.autoSwitch ? "on" : ""}"></div>
+        <span class="toggle-label">Auto-switch on token exhaustion</span>
+      </div>
+      <div class="pool-members">${members || `<div class="empty">No profiles yet.</div>`}</div>
+      ${addRow}
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-act]").forEach(el => el.addEventListener("click", () => {
+    const { act, pool, profile } = el.dataset;
+    if (act === "set-active") setActivePool(pool);
+    else if (act === "delete-pool") deletePool(pool);
+    else if (act === "toggle") {
+      const t = el.querySelector(".toggle");
+      toggleAutoSwitch(pool, !t.classList.contains("on"));
+    }
+    else if (act === "pool-add") {
+      const sel = document.getElementById(`psel-${CSS.escape(el.dataset.pool)}`);
+      if (sel?.value) poolAdd(el.dataset.pool, sel.value);
+    }
+    else if (act === "pool-remove") poolRemove(pool, profile);
+    else if (act === "reset") resetExhausted(null, profile);
+  }));
+}
+
+// ── Share dropdowns ───────────────────────────────────────────────────────────
+function populateShareDropdowns(profiles, pools) {
+  const psel = document.getElementById("exportProfileSel");
+  const prev = psel.value;
+  psel.innerHTML = `<option value="">Select profile…</option>` +
+    profiles.map(p =>
+      `<option value="${esc(p.name)}">${esc(p.name)} — ${esc(p.email || p.identity?.email || "—")}</option>`
+    ).join("");
+  if (prev) psel.value = prev;
+
+  const plsel = document.getElementById("exportPoolSel");
+  const prevpl = plsel.value;
+  plsel.innerHTML = `<option value="">Select pool…</option>` +
+    pools.map(p =>
+      `<option value="${esc(p.name)}">${esc(p.name)} (${p.profiles.length} profiles)</option>`
+    ).join("");
+  if (prevpl) plsel.value = prevpl;
+}
+
+// ── API actions ───────────────────────────────────────────────────────────────
+async function loadState() {
+  await run(async () => { renderState(await api("/api/state")); });
+}
+
+async function activateProfile(name) {
+  await run(async () => {
+    await api("/api/profiles/activate", { method: "POST", body: JSON.stringify({ name }) });
+    toast(`Activated: ${name}`);
+    await loadState();
+  });
+}
+
+async function deleteProfile(name) {
+  await run(async () => {
+    await api("/api/profiles/delete", { method: "POST", body: JSON.stringify({ name }) });
+    toast(`Deleted: ${name}`);
+    await loadState();
+  });
+}
+
+async function setActivePool(name) {
+  await run(async () => {
+    await api("/api/pools/set-active", { method: "POST", body: JSON.stringify({ name }) });
+    toast(`Active pool: ${name}`);
+    await loadState();
+  });
+}
+
+async function deletePool(name) {
+  await run(async () => {
+    await api("/api/pools/delete", { method: "POST", body: JSON.stringify({ name }) });
+    toast(`Deleted pool: ${name}`);
+    await loadState();
+  });
+}
+
+async function toggleAutoSwitch(poolName, enabled) {
+  await run(async () => {
+    await api("/api/pools/set-autoswitch", { method: "POST", body: JSON.stringify({ name: poolName, enabled }) });
+    await loadState();
+  });
+}
+
+async function poolAdd(poolName, profileName) {
+  await run(async () => {
+    await api("/api/pools/add-profile", { method: "POST", body: JSON.stringify({ pool: poolName, profile: profileName }) });
+    await loadState();
+  });
+}
+
+async function poolRemove(poolName, profileName) {
+  await run(async () => {
+    await api("/api/pools/remove-profile", { method: "POST", body: JSON.stringify({ pool: poolName, profile: profileName }) });
+    await loadState();
+  });
+}
+
+async function resetExhausted(poolName, profileName) {
+  await run(async () => {
+    await api("/api/pools/reset-exhausted", {
+      method: "POST",
+      body: JSON.stringify(poolName ? { pool: poolName } : { profile: profileName }),
+    });
+    toast("Reset exhausted state");
+    await loadState();
+  });
+}
+
+// ── Share: profiles ───────────────────────────────────────────────────────────
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const name = document.getElementById("exportProfileSel").value;
+  const passphrase = document.getElementById("exportPassphrase").value;
+  if (!name) { toast("Select a profile to export", true); return; }
+  if (!passphrase) { toast("Enter a passphrase", true); return; }
+  run(async () => {
+    const d = await api("/api/profiles/export", { method: "POST", body: JSON.stringify({ name, passphrase }) });
+    const ta = document.getElementById("bundleOut");
+    ta.value = d.bundle; ta.style.display = "block";
+    const hint = document.getElementById("exportHint");
+    hint.textContent = `Account: ${d.hint} — send the passphrase separately`;
+    hint.style.display = "block";
+    document.getElementById("copyBundleBtn").style.display = "block";
+    toast("Bundle ready");
+  });
+});
+
+document.getElementById("copyBundleBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById("bundleOut").value);
+    toast("Copied to clipboard");
+  } catch {
+    document.getElementById("bundleOut").select();
+    toast("Select all and copy manually");
+  }
+});
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  const bundle = document.getElementById("importBundleInput").value.trim();
+  const passphrase = document.getElementById("importPassphrase").value;
+  const name = document.getElementById("importNameInput").value.trim() || undefined;
+  if (!bundle) { toast("Paste a bundle first", true); return; }
+  if (!passphrase) { toast("Enter the passphrase", true); return; }
+  run(async () => {
+    const d = await api("/api/profiles/import", { method: "POST", body: JSON.stringify({ bundle, passphrase, name }) });
+    document.getElementById("importBundleInput").value = "";
+    document.getElementById("importPassphrase").value = "";
+    document.getElementById("importNameInput").value = "";
+    toast(`Imported: ${d.profileName} (${d.hint})`);
+    await loadState();
+  });
+});
+
+// ── Share: pools ──────────────────────────────────────────────────────────────
+document.getElementById("exportPoolBtn").addEventListener("click", () => {
+  const name = document.getElementById("exportPoolSel").value;
+  if (!name) { toast("Select a pool to export", true); return; }
+  run(async () => {
+    const d = await api("/api/pools/export", { method: "POST", body: JSON.stringify({ name }) });
+    const ta = document.getElementById("poolBundleOut");
+    ta.value = d.bundle; ta.style.display = "block";
+    document.getElementById("copyPoolBundleBtn").style.display = "block";
+    toast("Pool bundle ready — no passphrase needed");
+  });
+});
+
+document.getElementById("copyPoolBundleBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById("poolBundleOut").value);
+    toast("Copied to clipboard");
+  } catch {
+    document.getElementById("poolBundleOut").select();
+    toast("Copy manually");
+  }
+});
+
+document.getElementById("importPoolBtn").addEventListener("click", () => {
+  const bundle = document.getElementById("importPoolInput").value.trim();
+  const name = document.getElementById("importPoolNameInput").value.trim() || undefined;
+  if (!bundle) { toast("Paste a pool bundle first", true); return; }
+  run(async () => {
+    const d = await api("/api/pools/import", { method: "POST", body: JSON.stringify({ bundle, name }) });
+    document.getElementById("importPoolInput").value = "";
+    document.getElementById("importPoolNameInput").value = "";
+    const res = document.getElementById("importPoolResult");
+    const parts = [`Pool "${d.poolName}" imported.`];
+    if (d.added.length) parts.push(`Added: ${d.added.join(", ")}.`);
+    if (d.skipped.length) parts.push(`Skipped (not in your profiles): ${d.skipped.join(", ")}.`);
+    res.textContent = parts.join(" ");
+    res.style.display = "block";
+    toast(`Imported pool: ${d.poolName}`);
+    await loadState();
+  });
+});
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+document.getElementById("refreshBtn").addEventListener("click", loadState);
+
+document.getElementById("clearAuthBtn").addEventListener("click", () =>
+  run(async () => {
+    await api("/api/current/clear-auth", { method: "POST" });
+    toast("Auth cleared");
+    await loadState();
+  })
+);
+
+document.getElementById("saveCurrentBtn").addEventListener("click", () => {
+  const name = document.getElementById("profileNameInput").value.trim();
+  if (!name) { toast("Enter a profile name first", true); return; }
+  run(async () => {
+    await api("/api/profiles/save-current", { method: "POST", body: JSON.stringify({ name }) });
+    document.getElementById("profileNameInput").value = "";
+    toast(`Saved: ${name}`);
+    await loadState();
+  });
+});
+
+document.getElementById("createPoolBtn").addEventListener("click", () => {
+  const name = document.getElementById("poolNameInput").value.trim();
+  if (!name) { toast("Enter a pool name first", true); return; }
+  run(async () => {
+    await api("/api/pools/create", { method: "POST", body: JSON.stringify({ name }) });
+    document.getElementById("poolNameInput").value = "";
+    toast(`Created pool: ${name}`);
+    await loadState();
+  });
+});
+
+// Passphrase show/hide
+document.querySelectorAll(".pw-toggle").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const inp = document.getElementById(btn.dataset.target);
+    const show = inp.type === "text";
+    inp.type = show ? "password" : "text";
+    btn.textContent = show ? "show" : "hide";
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadState();
+</script>
+</body>
 </html>

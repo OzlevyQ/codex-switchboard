@@ -1,0 +1,21 @@
+{
+  "projectTitle": "Codex Switchboard Website",
+  "deviceType": "DESKTOP",
+  "prompts": [
+    {
+      "id": "cinematic-3d",
+      "title": "Cinematic 3D Hero",
+      "prompt": "Design a high-end marketing website landing page for a developer product called Codex Switchboard. The product lets users switch between multiple Codex accounts without losing local history, workspace state, or folder context. Make the design feel premium, ambitious, and polished, like a serious venture-backed dev tool. Use a dark editorial backdrop with a cinematic 3D hero object or 3D terminal sculpture that represents switching identities while preserving one shared workspace core. Include: strong hero headline, subheadline, GitHub CTA, visual explanation of how it works, feature strip, install commands for macOS/Linux/Windows, dashboard preview, and command examples for codex, codex ui, and codex-swap. Avoid template SaaS cards. Make it feel custom, spatial, and visually expensive."
+    },
+    {
+      "id": "glass-control-room",
+      "title": "Glass Control Room",
+      "prompt": "Create a premium desktop product website for Codex Switchboard with a futuristic control-room feel. Use layered depth, subtle 3D panels, floating interface surfaces, and cinematic lighting, but keep it professional and not game-like. The website must explain that Codex Switchboard swaps only ~/.codex/auth.json while keeping the same Codex history and folder context. Include sections for hero, problem vs solution, key features, command workflow, installation, dashboard preview, and a final GitHub call to action. This should feel like a flagship product page for an elite engineering tool, not a generic landing page."
+    },
+    {
+      "id": "premium-editorial-tech",
+      "title": "Premium Editorial Tech",
+      "prompt": "Design a luxurious desktop landing page for Codex Switchboard that combines premium editorial typography with advanced product visuals. Use a restrained but sophisticated palette, oversized type, a subtle 3D product illustration or abstract technical sculpture, and crisp product sections. The site should explain that the tool enables multi-account Codex usage without losing local machine history or workspace state. Include hero, trust section, why it exists, feature breakdown, installation snippets, command examples, dashboard section, and GitHub CTA. The result should feel more like Apple meets Linear meets a high-end developer tool launch than a standard startup page."
+    }
+  ]
+}

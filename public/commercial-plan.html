@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codex Switchboard Commercial Plan</title>
+    <style>
+      :root {
+        --bg: #f6f3ec;
+        --paper: #fffdf8;
+        --line: #ddd4c7;
+        --line-strong: #c7bcab;
+        --ink: #191714;
+        --muted: #62594e;
+        --accent: #14655f;
+        --accent-soft: #e4f1ef;
+        --warn: #9a4d15;
+        --warn-soft: #f8ead9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      .page {
+        width: min(1100px, calc(100% - 32px));
+        margin: 24px auto 56px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+      }
+
+      .masthead {
+        padding: 28px 28px 22px;
+        border-bottom: 1px solid var(--line-strong);
+        background:
+          linear-gradient(180deg, rgba(20, 101, 95, 0.05), rgba(20, 101, 95, 0)),
+          linear-gradient(90deg, rgba(154, 77, 21, 0.04), rgba(154, 77, 21, 0));
+      }
+
+      .kicker {
+        color: var(--accent);
+        font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 12px 0 10px;
+        font-size: clamp(34px, 5vw, 58px);
+        line-height: 0.95;
+      }
+
+      .lede {
+        max-width: 760px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 19px;
+        line-height: 1.6;
+      }
+
+      .top-summary {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 24px;
+        padding: 24px 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .summary-block h2,
+      .editor h2,
+      section h2 {
+        margin: 0 0 12px;
+        font-size: 24px;
+      }
+
+      .summary-block p,
+      .summary-block li,
+      section p,
+      section li,
+      td,
+      th {
+        font-size: 16px;
+        line-height: 1.65;
+      }
+
+      .summary-note {
+        padding: 14px 16px;
+        background: var(--accent-soft);
+        border-left: 4px solid var(--accent);
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+      }
+
+      .main {
+        min-width: 0;
+        border-right: 1px solid var(--line);
+      }
+
+      section {
+        padding: 24px 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section-intro {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+
+      .persona-list,
+      .risk-list,
+      .phase-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .phase-item,
+      .persona-item,
+      .risk-item {
+        padding-bottom: 14px;
+        border-bottom: 1px dashed var(--line);
+      }
+
+      .phase-item:last-child,
+      .persona-item:last-child,
+      .risk-item:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .phase-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      .phase-name,
+      .persona-title,
+      .risk-title {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .phase-time {
+        white-space: nowrap;
+        color: var(--warn);
+        font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .phase-outcome,
+      .persona-description,
+      .risk-description {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      ul,
+      ol {
+        margin: 12px 0 0;
+        padding-left: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        font-size: 12px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .editor {
+        padding: 24px 20px;
+        background: #fbf8f2;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--line-strong);
+        background: white;
+        color: var(--ink);
+        padding: 10px 12px;
+        font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+
+      button.warn {
+        background: var(--warn-soft);
+        color: var(--warn);
+        border-color: #e7c9a4;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 640px;
+        resize: vertical;
+        border: 1px solid var(--line-strong);
+        background: white;
+        color: var(--ink);
+        padding: 14px;
+        font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .status {
+        margin-top: 12px;
+        padding: 12px;
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+        font-size: 14px;
+      }
+
+      .status.error {
+        border-left-color: var(--warn);
+        background: var(--warn-soft);
+        color: #7d3f12;
+      }
+
+      .hint {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      @media (max-width: 980px) {
+        .top-summary,
+        .content {
+          grid-template-columns: 1fr;
+        }
+
+        .main {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="masthead" id="hero"></header>
+
+      <section class="top-summary">
+        <div class="summary-block">
+          <h2>North Star</h2>
+          <p id="northStarGoal"></p>
+        </div>
+        <div class="summary-block">
+          <h2>Success Metric</h2>
+          <div class="summary-note" id="northStarMetric"></div>
+        </div>
+      </section>
+
+      <div class="content">
+        <div class="main">
+          <section>
+            <h2>Positioning</h2>
+            <p class="section-intro">Pick a wedge first. Sell one painful workflow before trying to be a platform.</p>
+            <div class="persona-list" id="positioning"></div>
+          </section>
+
+          <section>
+            <h2>Execution Plan</h2>
+            <p class="section-intro">A practical build sequence from a useful utility into something that can charge.</p>
+            <div class="phase-list" id="phases"></div>
+          </section>
+
+          <section>
+            <h2>Pricing</h2>
+            <p class="section-intro">Keep packaging simple until the paid value proves itself.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Price</th>
+                  <th>Best Fit</th>
+                  <th>Included</th>
+                </tr>
+              </thead>
+              <tbody id="pricing"></tbody>
+            </table>
+          </section>
+
+          <section>
+            <h2>Go To Market</h2>
+            <p class="section-intro">Channels and proof points that are realistic for an early dev tool.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>Proof Point</th>
+                </tr>
+              </thead>
+              <tbody id="goToMarket"></tbody>
+            </table>
+          </section>
+
+          <section>
+            <h2>Metrics</h2>
+            <p class="section-intro">Track behavior, not vanity metrics.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Target</th>
+                </tr>
+              </thead>
+              <tbody id="metrics"></tbody>
+            </table>
+          </section>
+
+          <section>
+            <h2>Risks</h2>
+            <p class="section-intro">The main reasons this could stay a feature instead of becoming a business.</p>
+            <div class="risk-list" id="risks"></div>
+          </section>
+
+          <section>
+            <h2>Immediate Checklist</h2>
+            <p class="section-intro">What to do next if the goal is to test commercial viability quickly.</p>
+            <ol id="checklist"></ol>
+          </section>
+        </div>
+
+        <aside class="editor">
+          <h2>Editable JSON</h2>
+          <div class="toolbar">
+            <button class="primary" id="renderBtn">Render JSON</button>
+            <button id="formatBtn">Format JSON</button>
+            <button id="resetBtn">Reset</button>
+            <button class="warn" id="downloadBtn">Download JSON</button>
+          </div>
+          <textarea id="jsonEditor" spellcheck="false"></textarea>
+          <div class="status" id="status">Loading plan...</div>
+          <div class="hint">
+            If you open this page with <code>file://</code>, it will use the embedded JSON fallback.
+            If you open it through the local dashboard server, it will try to load
+            <code>commercial-plan.json</code> from disk.
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script id="embedded-plan" type="application/json">
+{
+  "product": {
+    "name": "Codex Switchboard",
+    "tagline": "The multi-account workspace layer for Codex",
+    "summary": "A commercial path for turning Codex Switchboard from a useful wrapper into a reliable product for freelancers, agencies, and teams."
+  },
+  "northStar": {
+    "title": "North Star",
+    "goal": "Make multi-account Codex usage feel native, safe, and team-ready without breaking local history or project context.",
+    "successMetric": "Weekly active users who switch accounts at least 3 times per week and keep Codex Switchboard installed for 30+ days."
+  },
+  "positioning": [
+    {
+      "title": "For freelancers",
+      "description": "Switch between personal, client, and work identities without losing project continuity."
+    },
+    {
+      "title": "For agencies",
+      "description": "Assign Codex identities by client and keep context, policies, and access organized."
+    },
+    {
+      "title": "For teams",
+      "description": "Centralize profile management, onboarding, and account controls across multiple developers."
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Stabilize The Core",
+      "timeline": "2-4 weeks",
+      "outcome": "Turn the current utility into a reliable product foundation.",
+      "items": [
+        "Installer self-check and rollback",
+        "Health diagnostics screen",
+        "Profile export/import",
+        "Safer backup model across pnpm, npm, Homebrew, and Windows shims",
+        "Telemetry hooks for anonymous install and command usage",
+        "Better error states and recovery guidance"
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Define The Paid Value",
+      "timeline": "3-5 weeks",
+      "outcome": "Move beyond account switching into workflow management.",
+      "items": [
+        "Per-project profile presets",
+        "Project rules for preferred account and startup behavior",
+        "Workspace catalog with project-to-profile mapping",
+        "Account notes, labels, and environment hints",
+        "Desktop-grade onboarding and polished first-run flow"
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Commercial MVP",
+      "timeline": "4-6 weeks",
+      "outcome": "Ship a version people can pay for.",
+      "items": [
+        "Cloud sync for profiles and project mappings",
+        "Encrypted backup and restore",
+        "License handling",
+        "Paid plan gating",
+        "Landing page and self-serve checkout",
+        "Support workflows and issue triage"
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Team Product",
+      "timeline": "6-10 weeks",
+      "outcome": "Add real B2B leverage.",
+      "items": [
+        "Shared workspace policies",
+        "Team-managed profile templates",
+        "Audit events and admin visibility",
+        "Member invites and seat management",
+        "Org-wide config sync",
+        "Customer-facing admin dashboard"
+      ]
+    }
+  ],
+  "pricing": [
+    {
+      "plan": "Free",
+      "price": "$0",
+      "fit": "Solo developers testing the workflow",
+      "features": [
+        "Basic account switching",
+        "Local saved profiles",
+        "Manual dashboard usage"
+      ]
+    },
+    {
+      "plan": "Pro",
+      "price": "$12-19/mo",
+      "fit": "Freelancers and power users",
+      "features": [
+        "Project presets",
+        "Cloud sync",
+        "Encrypted backup",
+        "Priority updates",
+        "Advanced launcher controls"
+      ]
+    },
+    {
+      "plan": "Team",
+      "price": "$39-99/mo + seats",
+      "fit": "Agencies and internal dev teams",
+      "features": [
+        "Shared profiles and policies",
+        "Admin controls",
+        "Audit history",
+        "Managed onboarding",
+        "Team workspace sync"
+      ]
+    }
+  ],
+  "goToMarket": {
+    "channels": [
+      "GitHub and dev Twitter/X launch",
+      "Product Hunt or similar dev tool launch",
+      "Direct outreach to freelancers and agencies using multiple AI coding accounts",
+      "Demo videos showing personal vs client account workflows"
+    ],
+    "proofPoints": [
+      "No lost local history",
+      "Works in the same folder and same machine context",
+      "One-line install across macOS, Linux, and Windows",
+      "Fast account switching without re-setup friction"
+    ]
+  },
+  "metrics": [
+    {
+      "name": "Activation",
+      "target": "70% of installs complete first successful profile save"
+    },
+    {
+      "name": "Retention",
+      "target": "40% weekly retention after 30 days"
+    },
+    {
+      "name": "Conversion",
+      "target": "5-10% free to paid once sync and project presets exist"
+    },
+    {
+      "name": "Expansion",
+      "target": "20% of paid accounts connect 2+ projects"
+    }
+  ],
+  "risks": [
+    {
+      "title": "Feature, not company",
+      "mitigation": "Sell workflow management, sync, and team controls instead of only auth switching."
+    },
+    {
+      "title": "CLI changes upstream",
+      "mitigation": "Invest in compatibility tests and fallback install strategies."
+    },
+    {
+      "title": "Security trust barrier",
+      "mitigation": "Document exactly what is stored, encrypt cloud sync, and provide local-only mode."
+    },
+    {
+      "title": "Easy to copy",
+      "mitigation": "Win on reliability, UX, onboarding, and team workflows."
+    }
+  ],
+  "executionChecklist": [
+    "Add product analytics hooks",
+    "Create landing page with waitlist",
+    "Record 60-second demo",
+    "Write positioning copy for Free / Pro / Team",
+    "Build export/import and diagnostics first",
+    "Design team-mode schema before coding sync"
+  ]
+}
+    </script>
+
+    <script>
+      const editor = document.getElementById("jsonEditor");
+      const statusEl = document.getElementById("status");
+      const embeddedJsonText = document.getElementById("embedded-plan").textContent.trim();
+      let sourceJsonText = embeddedJsonText;
+
+      function setStatus(message, isError = false) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle("error", isError);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function renderList(items) {
+        return items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      }
+
+      function renderPlan(plan) {
+        document.getElementById("hero").innerHTML = `
+          <div class="kicker">Commercial Strategy Document</div>
+          <h1>${escapeHtml(plan.product.name)}</h1>
+          <p class="lede">${escapeHtml(plan.product.summary)}</p>
+        `;
+
+        document.getElementById("northStarGoal").textContent = plan.northStar.goal;
+        document.getElementById("northStarMetric").textContent = plan.northStar.successMetric;
+
+        document.getElementById("positioning").innerHTML = plan.positioning
+          .map(
+            (item) => `
+              <div class="persona-item">
+                <h3 class="persona-title">${escapeHtml(item.title)}</h3>
+                <p class="persona-description">${escapeHtml(item.description)}</p>
+              </div>
+            `
+          )
+          .join("");
+
+        document.getElementById("phases").innerHTML = plan.phases
+          .map(
+            (phase) => `
+              <div class="phase-item">
+                <div class="phase-head">
+                  <h3 class="phase-name">${escapeHtml(phase.name)}</h3>
+                  <div class="phase-time">${escapeHtml(phase.timeline)}</div>
+                </div>
+                <p class="phase-outcome">${escapeHtml(phase.outcome)}</p>
+                <ul>${renderList(phase.items)}</ul>
+              </div>
+            `
+          )
+          .join("");
+
+        document.getElementById("pricing").innerHTML = plan.pricing
+          .map(
+            (item) => `
+              <tr>
+                <td>${escapeHtml(item.plan)}</td>
+                <td>${escapeHtml(item.price)}</td>
+                <td>${escapeHtml(item.fit)}</td>
+                <td><ul>${renderList(item.features)}</ul></td>
+              </tr>
+            `
+          )
+          .join("");
+
+        const rows = [];
+        const maxRows = Math.max(plan.goToMarket.channels.length, plan.goToMarket.proofPoints.length);
+        for (let i = 0; i < maxRows; i += 1) {
+          rows.push(`
+            <tr>
+              <td>${escapeHtml(plan.goToMarket.channels[i] || "")}</td>
+              <td>${escapeHtml(plan.goToMarket.proofPoints[i] || "")}</td>
+            </tr>
+          `);
+        }
+        document.getElementById("goToMarket").innerHTML = rows.join("");
+
+        document.getElementById("metrics").innerHTML = plan.metrics
+          .map(
+            (item) => `
+              <tr>
+                <td>${escapeHtml(item.name)}</td>
+                <td>${escapeHtml(item.target)}</td>
+              </tr>
+            `
+          )
+          .join("");
+
+        document.getElementById("risks").innerHTML = plan.risks
+          .map(
+            (item) => `
+              <div class="risk-item">
+                <h3 class="risk-title">${escapeHtml(item.title)}</h3>
+                <p class="risk-description">${escapeHtml(item.mitigation)}</p>
+              </div>
+            `
+          )
+          .join("");
+
+        document.getElementById("checklist").innerHTML = plan.executionChecklist
+          .map((item) => `<li>${escapeHtml(item)}</li>`)
+          .join("");
+      }
+
+      async function loadPlanFromFile() {
+        const isFileProtocol = window.location.protocol === "file:";
+        if (isFileProtocol) {
+          sourceJsonText = embeddedJsonText;
+          editor.value = `${JSON.stringify(JSON.parse(embeddedJsonText), null, 2)}\n`;
+          renderPlan(JSON.parse(embeddedJsonText));
+          setStatus("Loaded embedded JSON because this page is running from file://");
+          return;
+        }
+
+        try {
+          const response = await fetch("./commercial-plan.json");
+          if (!response.ok) {
+            throw new Error("Failed to load commercial-plan.json");
+          }
+          sourceJsonText = await response.text();
+          editor.value = `${JSON.stringify(JSON.parse(sourceJsonText), null, 2)}\n`;
+          renderPlan(JSON.parse(sourceJsonText));
+          setStatus("Loaded commercial-plan.json from the local server.");
+        } catch (error) {
+          sourceJsonText = embeddedJsonText;
+          editor.value = `${JSON.stringify(JSON.parse(embeddedJsonText), null, 2)}\n`;
+          renderPlan(JSON.parse(embeddedJsonText));
+          setStatus(`Fell back to embedded JSON: ${error.message}`, true);
+        }
+      }
+
+      function renderFromEditor() {
+        const parsed = JSON.parse(editor.value);
+        renderPlan(parsed);
+        setStatus("Rendered JSON successfully.");
+      }
+
+      function formatEditorJson() {
+        const parsed = JSON.parse(editor.value);
+        editor.value = `${JSON.stringify(parsed, null, 2)}\n`;
+        setStatus("Formatted JSON.");
+      }
+
+      function downloadEditorJson() {
+        const blob = new Blob([editor.value], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "commercial-plan.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        setStatus("Downloaded JSON.");
+      }
+
+      document.getElementById("renderBtn").addEventListener("click", () => {
+        try {
+          renderFromEditor();
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      });
+
+      document.getElementById("formatBtn").addEventListener("click", () => {
+        try {
+          formatEditorJson();
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      });
+
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        editor.value = `${JSON.stringify(JSON.parse(sourceJsonText), null, 2)}\n`;
+        try {
+          renderPlan(JSON.parse(sourceJsonText));
+          setStatus("Reset to the loaded source JSON.");
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      });
+
+      document.getElementById("downloadBtn").addEventListener("click", () => {
+        try {
+          downloadEditorJson();
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      });
+
+      loadPlanFromFile().catch((error) => {
+        setStatus(error.message, true);
+      });
+    </script>
+  </body>
+</html>

@@ -256,15 +256,24 @@ export async function runRealCodex(args) {
 
   return new Promise((resolve) => {
     const child = spawn(realCodex, finalArgs, {
-      stdio: "inherit",
+      // stderr is piped so we can capture it for exhaustion detection.
+      // stdin and stdout stay inherited so the terminal experience is unchanged.
+      stdio: ["inherit", "inherit", "pipe"],
       env: process.env,
     });
 
+    const stderrChunks = [];
+    child.stderr.on("data", (chunk) => {
+      stderrChunks.push(chunk);
+      process.stderr.write(chunk); // forward to terminal in real-time
+    });
+
     child.on("exit", (code, signal) => {
+      const stderr = Buffer.concat(stderrChunks).toString("utf8");
       if (signal) {
-        resolve({ code: 1, signal });
+        resolve({ code: 1, signal, stderr });
       } else {
-        resolve({ code: code ?? 0, signal: null });
+        resolve({ code: code ?? 0, signal: null, stderr });
       }
     });
   });

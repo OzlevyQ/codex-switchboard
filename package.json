@@ -1,8 +1,32 @@
 {
   "name": "codex-switchboard",
   "version": "1.1.0",
-  "private": true,
+  "description": "Multi-account launcher, dashboard, pooling, and profile sharing for the Codex CLI without losing local workspace history.",
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OzlevyQ/codex-switchboard.git"
+  },
+  "homepage": "https://github.com/OzlevyQ/codex-switchboard",
+  "bugs": {
+    "url": "https://github.com/OzlevyQ/codex-switchboard/issues"
+  },
+  "keywords": [
+    "codex",
+    "openai",
+    "cli",
+    "account-switching",
+    "dashboard",
+    "auth"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
+  "dependencies": {
+    "@google/stitch-sdk": "^0.0.3"
+  },
   "scripts": {
     "start": "node server.mjs",
     "bootstrap:unix": "bash ./scripts/bootstrap.sh",
@@ -10,6 +34,8 @@
     "install:unix": "bash ./scripts/install.sh",
     "uninstall:unix": "bash ./scripts/uninstall.sh",
     "install:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
-    "uninstall:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\uninstall.ps1"
+    "uninstall:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\uninstall.ps1",
+    "stitch:generate-commercial-plan": "node ./scripts/generate-commercial-plan-designs.mjs",
+    "stitch:generate-website": "node ./scripts/generate-website-designs.mjs"
   }
 }
