@@ -35,6 +35,7 @@ const CSB_CLOUD_FILE = path.join(SWITCHBOARD_DIR, 'csb-cloud.json');
 const DAEMON_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-daemon.pid');
 const WATCH_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-watch.pid');
 const DEFAULT_API_URL = 'http://127.0.0.1:4318';
+const CLOUD_DASHBOARD_URL = process.env.CSB_DASHBOARD_URL || 'https://cbs.yadbarzel.info';
 const WATCH_INTERVAL_MS = 4000;
 
 // ── Helpers ──
@@ -194,7 +195,7 @@ function getProfilesForSync() {
 async function cmdLink(token) {
   if (!token) {
     console.error('Usage: csb link <token>');
-    console.error('Generate a link token from the CSB dashboard: http://localhost:5173/dashboard/devices');
+    console.error(`Generate a link token from the CSB dashboard: ${CLOUD_DASHBOARD_URL}/dashboard/devices`);
     process.exit(1);
   }
 
@@ -575,7 +576,7 @@ async function cmdUp() {
   }
 
   console.log(`  Local UI:  http://127.0.0.1:4317`);
-  console.log(`  Cloud UI:  http://localhost:5173/dashboard\n`);
+  console.log(`  Cloud UI:  ${CLOUD_DASHBOARD_URL}/dashboard\n`);
 }
 
 // ── Main ──
@@ -627,7 +628,7 @@ async function main() {
     csb daemon restart   Restart the local Switchboard daemon
 
   Generate a link token from the dashboard:
-    http://localhost:5173/dashboard/devices
+    ${CLOUD_DASHBOARD_URL}/dashboard/devices
 `);
       break;
   }
