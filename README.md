@@ -93,7 +93,7 @@ The installer is designed to make `codex` work immediately in the current shell 
 | `codex` | Show the launcher, optionally switch profiles, then run the real Codex CLI |
 | `codex ui` | Start the local dashboard server and open it in the default browser |
 | `codex-swap` | Switch directly between saved profiles |
-| `csb link <token>` | Link the machine to the CSB Cloud Platform |
+| `csb link <token>` | Start the local daemon if needed, then link the machine to CSB Cloud |
 | `csb up` | Start the local daemon and run cloud sync automatically if linked |
 | `csb sync` | Push local profile metadata to the cloud |
 | `csb status` | Check cloud platform connection status |
@@ -102,13 +102,12 @@ The installer is designed to make `codex` work immediately in the current shell 
 ## Typical Flow
 
 1. Install Codex Switchboard.
-2. Run `csb daemon start`.
-3. Generate a link token from the cloud dashboard and run `csb link <token>`.
-4. Run `codex login` with one account.
-5. Use `codex` normally.
-6. Run `codex login` with another account later.
-7. Use `codex` again and let Switchboard auto-capture it.
-8. Next launch, press a number in the launcher to swap accounts instantly.
+2. Generate a link token from the cloud dashboard and run `csb link <token>`.
+3. Run `codex login` with one account.
+4. Use `codex` normally.
+5. Run `codex login` with another account later.
+6. Use `codex` again and let Switchboard auto-capture it.
+7. Next launch, press a number in the launcher to swap accounts instantly.
 
 ## Installation
 
@@ -188,16 +187,28 @@ This command:
 ### Official CSB Cloud flow
 
 ```bash
-csb daemon start
 csb link <token>
 ```
 
 After `csb link <token>` succeeds:
 
+- the local daemon is started automatically if needed
 - the device is linked to CSB Cloud
 - background live sync starts automatically
 - local profiles and pools are pushed continuously to the cloud
 - the local daemon keeps the machine-facing state live on `127.0.0.1:4317`
+
+When you want to disconnect completely:
+
+```bash
+csb unlink
+```
+
+That stops:
+
+- the cloud live sync worker
+- the local daemon
+- the cloud link itself
 
 ### Switch directly from the terminal
 

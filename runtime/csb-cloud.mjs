@@ -193,10 +193,14 @@ async function cmdLink(token) {
   console.log(`  Profiles: ${deviceInfo.profileCount} local profile(s)`);
   console.log('');
 
-  const daemonReady = await waitForLocalDaemon(4);
+  let daemonReady = await waitForLocalDaemon(4);
   if (!daemonReady) {
-    console.error(`  ✗ Local daemon is not running.\n`);
-    console.error(`  Run: csb daemon start\n`);
+    await startDaemon();
+    daemonReady = await waitForLocalDaemon();
+  }
+
+  if (!daemonReady) {
+    console.error(`  ✗ Local daemon could not be started or reached on port 4317.\n`);
     process.exit(1);
   }
 
@@ -328,8 +332,9 @@ async function cmdUnlink() {
 
   rmSync(CSB_CLOUD_FILE, { force: true });
   stopWatch();
+  stopDaemon();
 
-  console.log('\n  ✓ Device unlinked from CSB Cloud.\n');
+  console.log('\n  ✓ Device unlinked from CSB Cloud and local daemon stopped.\n');
 }
 
 async function waitForLocalDaemon(maxAttempts = 15) {
