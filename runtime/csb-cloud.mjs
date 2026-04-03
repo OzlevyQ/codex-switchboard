@@ -12,7 +12,7 @@
  * Uses the existing codex-switchboard runtime for profile data.
  */
 
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -31,6 +31,7 @@ const ROOT_DIR = path.join(__dirname, '..');
 const SERVER_MJS = path.join(ROOT_DIR, 'server.mjs');
 
 const CSB_CLOUD_FILE = path.join(SWITCHBOARD_DIR, 'csb-cloud.json');
+const DAEMON_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-daemon.pid');
 const DEFAULT_API_URL = 'http://127.0.0.1:4318';
 
 // ── Helpers ──
@@ -48,6 +49,37 @@ function removeCloudConfig() {
   try {
     rmSync(CSB_CLOUD_FILE, { force: true });
   } catch {}
+}
+
+function readDaemonPid() {
+  try {
+    const raw = readFileSync(DAEMON_PID_FILE, 'utf8').trim();
+    const pid = Number(raw);
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDaemonPid(pid) {
+  mkdirSync(SWITCHBOARD_DIR, { recursive: true });
+  writeFileSync(DAEMON_PID_FILE, `${pid}\n`, 'utf8');
+}
+
+function clearDaemonPid() {
+  try {
+    rmSync(DAEMON_PID_FILE, { force: true });
+  } catch {}
+}
+
+function isPidRunning(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getApiUrl() {
@@ -257,6 +289,58 @@ async function cmdUnlink() {
   console.log('\n  ✓ Device unlinked from CSB Cloud.\n');
 }
 
+function startDaemon() {
+  import('node:child_process').then(({ spawn }) => {
+    const existingPid = readDaemonPid();
+    if (isPidRunning(existingPid)) {
+      console.log(`\n  ✓ CSB Local Daemon already running (pid ${existingPid}) on port 4317.\n`);
+      return;
+    }
+
+    console.log('\n  ⌁ Starting CSB Local Daemon on port 4317...');
+    const child = spawn('node', [SERVER_MJS], {
+      stdio: 'ignore',
+      detached: true,
+    });
+    child.on('error', (err) => console.error('  ✗ Failed to start daemon:', err.message));
+    child.unref();
+    writeDaemonPid(child.pid);
+
+    // Auto-sync heartbeat on start
+    cmdSync(true).catch(() => {});
+
+    console.log(`  ✓ Started with pid ${child.pid}\n`);
+  });
+}
+
+function stopDaemon() {
+  const pid = readDaemonPid();
+  if (!isPidRunning(pid)) {
+    clearDaemonPid();
+    console.log('\n  No CSB Local Daemon is currently tracked as running.\n');
+    return;
+  }
+
+  try {
+    process.kill(pid, 'SIGTERM');
+    clearDaemonPid();
+    console.log(`\n  ✓ Stopped CSB Local Daemon (pid ${pid}).\n`);
+  } catch (err) {
+    console.error(`\n  ✗ Failed to stop daemon: ${err.message}\n`);
+  }
+}
+
+function restartDaemon() {
+  const pid = readDaemonPid();
+  if (isPidRunning(pid)) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {}
+    clearDaemonPid();
+  }
+  startDaemon();
+}
+
 // ── Main ──
 
 async function main() {
@@ -277,21 +361,10 @@ async function main() {
       await cmdUnlink();
       break;
     case 'daemon':
-      if (args[1] === 'start') {
-        import('node:child_process').then(({ spawn }) => {
-          console.log('\n  ⌁ Starting CSB Local Daemon on port 4317...');
-          const child = spawn('node', [SERVER_MJS], {
-            stdio: 'inherit',
-            detached: false,
-          });
-          child.on('error', (err) => console.error('  ✗ Failed to start daemon:', err.message));
-          
-          // Auto-sync heartbeat on start
-          cmdSync(true).catch(() => {});
-        });
-      } else {
-        console.error('  Usage: csb daemon start');
-      }
+      if (args[1] === 'start') startDaemon();
+      else if (args[1] === 'stop') stopDaemon();
+      else if (args[1] === 'restart') restartDaemon();
+      else console.error('  Usage: csb daemon <start|stop|restart>');
       break;
     default:
       console.log(`
@@ -302,7 +375,9 @@ async function main() {
     csb sync             Sync local profiles to the cloud
     csb status           Show cloud connection status
     csb unlink           Disconnect this device from the cloud
-    csb daemon start    Run local Switchboard GUI & API proxy (port 4317)
+    csb daemon start     Run local Switchboard GUI & API proxy (port 4317)
+    csb daemon stop      Stop the local Switchboard daemon
+    csb daemon restart   Restart the local Switchboard daemon
 
   Generate a link token from the dashboard:
     http://localhost:5173/dashboard/devices
