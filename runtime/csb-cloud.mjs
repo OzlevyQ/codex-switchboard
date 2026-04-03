@@ -13,7 +13,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -104,6 +104,24 @@ function isPidRunning(pid) {
   } catch {
     return false;
   }
+}
+
+function findListeningPid(port) {
+  try {
+    const output = spawnSyncSafe('lsof', ['-ti', `tcp:${port}`]);
+    const pid = Number(String(output).trim().split('\n')[0] || '');
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+function spawnSyncSafe(command, args) {
+  const result = spawnSync(command, args, { encoding: 'utf8' });
+  if (result.error) {
+    throw result.error;
+  }
+  return result.stdout || '';
 }
 
 function getApiUrl() {
@@ -325,14 +343,21 @@ async function cmdStatus() {
 
 async function cmdUnlink() {
   const config = getCloudConfig();
-  if (!config) {
-    console.log('Not linked to CSB Cloud.');
-    return;
+
+  if (config) {
+    try {
+      await apiRequest('/api/devices/self', { method: 'DELETE' });
+    } catch {}
   }
 
   rmSync(CSB_CLOUD_FILE, { force: true });
   stopWatch();
-  stopDaemon();
+  await stopDaemon(true);
+
+  if (!config) {
+    console.log('\n  ✓ No cloud link was active. Local daemon has been stopped.\n');
+    return;
+  }
 
   console.log('\n  ✓ Device unlinked from CSB Cloud and local daemon stopped.\n');
 }
@@ -353,11 +378,7 @@ async function waitForLocalDaemon(maxAttempts = 15) {
 async function startDaemon({ restart = false } = {}) {
   const existingPid = readDaemonPid();
   if (restart && isPidRunning(existingPid)) {
-    try {
-      process.kill(existingPid, 'SIGTERM');
-    } catch {}
-    clearDaemonPid();
-    await sleep(250);
+    await stopDaemon(true);
   } else if (isPidRunning(existingPid)) {
     console.log(`\n  ✓ CSB Local Daemon already running (pid ${existingPid}) on port 4317.\n`);
     return existingPid;
@@ -382,21 +403,61 @@ async function startDaemon({ restart = false } = {}) {
   return child.pid;
 }
 
-function stopDaemon() {
-  const pid = readDaemonPid();
+async function terminatePid(pid, label) {
   if (!isPidRunning(pid)) {
-    clearDaemonPid();
-    console.log('\n  No CSB Local Daemon is currently tracked as running.\n');
-    return;
+    return false;
   }
 
   try {
     process.kill(pid, 'SIGTERM');
-    clearDaemonPid();
-    console.log(`\n  ✓ Stopped CSB Local Daemon (pid ${pid}).\n`);
-  } catch (err) {
-    console.error(`\n  ✗ Failed to stop daemon: ${err.message}\n`);
+  } catch {}
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    if (!isPidRunning(pid)) {
+      return true;
+    }
+    await sleep(100);
   }
+
+  try {
+    process.kill(pid, 'SIGKILL');
+  } catch {}
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    if (!isPidRunning(pid)) {
+      return true;
+    }
+    await sleep(100);
+  }
+
+  console.error(`\n  ✗ Failed to stop ${label} (pid ${pid}).\n`);
+  return false;
+}
+
+async function stopDaemon(quiet = false) {
+  const trackedPid = readDaemonPid();
+  let stopped = false;
+
+  if (isPidRunning(trackedPid)) {
+    stopped = (await terminatePid(trackedPid, 'CSB Local Daemon')) || stopped;
+  }
+
+  const portPid = findListeningPid(4317);
+  if (portPid && portPid !== trackedPid) {
+    stopped = (await terminatePid(portPid, 'CSB Local Daemon on port 4317')) || stopped;
+  }
+
+  clearDaemonPid();
+
+  if (!quiet) {
+    if (stopped) {
+      console.log('\n  ✓ Stopped CSB Local Daemon.\n');
+    } else {
+      console.log('\n  No CSB Local Daemon is currently running.\n');
+    }
+  }
+
+  return stopped;
 }
 
 async function restartDaemon() {
@@ -547,7 +608,7 @@ async function main() {
         await startDaemon();
         await ensureWatchRunning(true);
       }
-      else if (args[1] === 'stop') stopDaemon();
+      else if (args[1] === 'stop') await stopDaemon();
       else if (args[1] === 'restart') await restartDaemon();
       else console.error('  Usage: csb daemon <start|stop|restart>');
       break;
