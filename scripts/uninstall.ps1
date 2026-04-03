@@ -22,6 +22,7 @@ if ($config -and (Test-Path $config.backupCodex)) {
 if ($config) {
   Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $config.binDir "codex-swap.cmd")
   Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $config.binDir "codex-switchboard-dashboard.cmd")
+  Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $config.binDir "csb.cmd")
   Remove-Item -Force -ErrorAction SilentlyContinue $config.backupCodex
 }
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $AppDir

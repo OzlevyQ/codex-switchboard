@@ -122,10 +122,15 @@ cat > "${TARGET_BIN_DIR}/codex-switchboard-dashboard" <<EOF
 exec node "${APP_DIR}/server.mjs" --open-browser "\$@"
 EOF
 
-chmod +x "${TARGET_CODEX}" "${TARGET_BIN_DIR}/codex-swap" "${TARGET_BIN_DIR}/codex-switchboard-dashboard"
+cat > "${TARGET_BIN_DIR}/csb" <<EOF
+#!/usr/bin/env bash
+exec node "${APP_DIR}/runtime/csb-cloud.mjs" "\$@"
+EOF
+
+chmod +x "${TARGET_CODEX}" "${TARGET_BIN_DIR}/codex-swap" "${TARGET_BIN_DIR}/codex-switchboard-dashboard" "${TARGET_BIN_DIR}/csb"
 
 echo "Codex Switchboard installed."
 echo "real codex backup: ${BACKUP_CODEX}"
-echo "commands: codex, codex-swap, codex-switchboard-dashboard"
+echo "commands: codex, codex-swap, codex-switchboard-dashboard, csb"
 echo "installed in: ${TARGET_BIN_DIR}"
 echo "It should work immediately in the current environment."

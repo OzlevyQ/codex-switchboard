@@ -43,7 +43,7 @@ if [[ -n "${MANAGED_CODEX}" && -n "${BACKUP_CODEX}" && -f "${BACKUP_CODEX}" ]]; 
   cp -P "${BACKUP_CODEX}" "${MANAGED_CODEX}"
 fi
 
-rm -f "${BIN_DIR}/codex-swap" "${BIN_DIR}/codex-switchboard-dashboard" "${BACKUP_CODEX}"
+rm -f "${BIN_DIR}/codex-swap" "${BIN_DIR}/codex-switchboard-dashboard" "${BIN_DIR}/csb" "${BACKUP_CODEX}"
 rm -rf "${APP_DIR}"
 rm -f "${CONFIG_FILE}"
 

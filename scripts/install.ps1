@@ -66,8 +66,13 @@ node "$AppDir\runtime\codex-swap.mjs" %*
 node "$AppDir\server.mjs" --open-browser %*
 "@ | Set-Content -Encoding ASCII (Join-Path $TargetBinDir "codex-switchboard-dashboard.cmd")
 
+@"
+@echo off
+node "$AppDir\runtime\csb-cloud.mjs" %*
+"@ | Set-Content -Encoding ASCII (Join-Path $TargetBinDir "csb.cmd")
+
 Write-Host "Codex Switchboard installed."
 Write-Host "real codex backup: $BackupCodex"
-Write-Host "commands: codex, codex-swap, codex-switchboard-dashboard"
+Write-Host "commands: codex, codex-swap, codex-switchboard-dashboard, csb"
 Write-Host "installed in: $TargetBinDir"
 Write-Host "It should work immediately in the current environment."

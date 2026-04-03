@@ -11,6 +11,7 @@ It lets you switch between Codex identities without moving to a different `CODEX
 - Saves newly used accounts automatically after a normal `codex` session.
 - Opens a local dashboard for profile management, pools, and sharing.
 - Supports automatic fallback to another profile when the current one is exhausted or rate-limited.
+- **NEW**: Connects to the **CSB Cloud Platform** via `csb link` to sync profiles and access the template marketplace.
 
 ## Why It Exists
 
@@ -59,14 +60,15 @@ This is useful for moving profile sets between machines or sharing team-ready po
 
 ### Local dashboard
 
-The dashboard runs on `http://127.0.0.1:4317` by default and includes:
+The minimal local dashboard runs on `http://127.0.0.1:4317` by default for local profile management. 
 
-- current Codex identity summary
-- profile list and activation
-- delete and reset actions
-- pool management
-- share/import tools
-- loading states on actions so the UI does not race ahead of long operations
+### CSB Web Platform (New!)
+
+We've introduced the **CSB Cloud Platform**, a modern, premium web dashboard that acts as the central hub for your identities.
+- Sync your profiles across multiple devices using the `csb link` command.
+- Browse the **Identity Marketplace** for pool templates, workflow packs, and team presets.
+- View real-time statuses and manage your CLI links.
+- Uses Firebase Authentication (Google Auth) and a custom Express backend.
 
 ## Quick Start
 
@@ -89,9 +91,12 @@ The installer is designed to make `codex` work immediately in the current shell 
 | Command | Purpose |
 | --- | --- |
 | `codex` | Show the launcher, optionally switch profiles, then run the real Codex CLI |
-| `codex ui` | Start the dashboard server and open it in the default browser |
+| `codex ui` | Start the local dashboard server and open it in the default browser |
 | `codex-swap` | Switch directly between saved profiles |
-| `codex-switchboard-dashboard` | Start the dashboard explicitly |
+| `csb link <token>` | Link the machine to the CSB Cloud Platform |
+| `csb sync` | Push local profile metadata to the cloud |
+| `csb status` | Check cloud platform connection status |
+| `csb daemon start` | Start the local Switchboard GUI & API proxy (Port 4317) |
 
 ## Typical Flow
 
@@ -211,6 +216,21 @@ HOST=0.0.0.0 codex ui
 
 When started with `HOST=0.0.0.0`, Switchboard prints the detected network URLs in the terminal.
 
+## CSB Web Platform Development
+
+The new React + Tailwind application and its Express backend live in `csb-web/`.
+
+```bash
+cd csb-web
+npm install
+
+# Start both the web client and the API server concurrently
+npm run dev:all
+```
+
+- Web Client: `http://localhost:5173`
+- API Server: `http://127.0.0.1:4318`
+
 ## State and Data Layout
 
 | Path | Purpose |
@@ -260,6 +280,7 @@ npm run stitch:generate-website
 ## Related Docs
 
 - [Website PRD](./docs/website-prd.md)
+- [Commercialization roadmap](./docs/commercialization-roadmap.md)
 - [Stitch generation notes](./STITCH.md)
 - [Claude project notes](./CLAUDE.md)
 

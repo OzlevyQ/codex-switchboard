@@ -46,12 +46,25 @@ const metaFile = join(stateDir, "meta.json");
 
 mkdirSync(profilesDir, { recursive: true });
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "OPTIONS, GET, POST, DELETE, PUT",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 function sendJson(res, status, data) {
+  // Always set CORS headers
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    res.setHeader(key, value);
+  }
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(data));
 }
 
 function sendText(res, status, text, contentType = "text/plain; charset=utf-8") {
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    res.setHeader(key, value);
+  }
   res.writeHead(status, { "Content-Type": contentType });
   res.end(text);
 }
@@ -278,6 +291,15 @@ function serveStatic(req, res) {
 
 async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  if (req.method === "OPTIONS") {
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      res.setHeader(key, value);
+    }
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
 
   if (req.method === "GET" && url.pathname === "/api/state") {
     const codexStatus = await runCodexStatus();
@@ -555,6 +577,12 @@ async function handleApi(req, res) {
       sendJson(res, 400, { error: "pool or profile is required" });
       return true;
     }
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/trigger-sync") {
+    spawn("csb", ["sync"], { stdio: "ignore", detached: true }).unref();
     sendJson(res, 200, { ok: true });
     return true;
   }
