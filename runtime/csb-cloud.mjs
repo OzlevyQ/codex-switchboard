@@ -34,8 +34,8 @@ const SERVER_MJS = path.join(ROOT_DIR, 'server.mjs');
 const CSB_CLOUD_FILE = path.join(SWITCHBOARD_DIR, 'csb-cloud.json');
 const DAEMON_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-daemon.pid');
 const WATCH_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-watch.pid');
-const DEFAULT_API_URL = 'http://127.0.0.1:4318';
 const CLOUD_DASHBOARD_URL = process.env.CSB_DASHBOARD_URL || 'https://cbs.yadbarzel.info';
+const DEFAULT_API_URL = process.env.CSB_API_URL || CLOUD_DASHBOARD_URL;
 const WATCH_INTERVAL_MS = 4000;
 
 // ── Helpers ──

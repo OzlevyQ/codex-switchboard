@@ -1,63 +1,21 @@
 # Codex Switchboard
 
-Codex Switchboard is a local multi-account layer for the `codex` CLI.
+Codex Switchboard is a multi-account management layer for the `codex` CLI. It wraps the real `codex` binary so you can save, switch, and auto-rotate between multiple Codex accounts — without losing local conversation history, workspace context, or folder state.
 
-It keeps the normal `~/.codex` machine history and workspace context, and only rotates the active `auth.json`. The result is simple: you can switch identities without moving to a different `CODEX_HOME` and without starting from a "fresh" Codex state every time.
+## What It Does
 
-## What It Handles
+- Wraps the real `codex` binary with a launcher that shows your active account and saved profiles
+- Lets you switch accounts in under 200ms (press a number when the launcher appears)
+- Saves newly used accounts automatically after each session
+- Groups accounts into **pools** and rotates automatically when quota is exhausted on one account
+- Lets you **share encrypted profile bundles** and pool configs with teammates
+- Runs a **local dashboard** at `http://127.0.0.1:4317` for full visual management
+- Optionally links to **CSB Cloud** to sync your device, profiles, and pools to a web dashboard
+- Includes a **marketplace** for sharing pool templates, workflow packs, and team presets
 
-- wraps the real `codex` binary with a launcher
-- shows the active user before Codex starts
-- lets you switch users instantly from the launcher or with `codex-swap`
-- auto-saves newly used accounts after a normal `codex` session
-- runs a local dashboard on `127.0.0.1:4317`
-- supports profile pools and automatic fallback when a profile is exhausted
-- can link the local machine to CSB Cloud with `csb link <token>`
+---
 
-## Why It Exists
-
-Using separate `CODEX_HOME` folders works, but it splits the experience:
-
-- local conversation history gets fragmented
-- project context gets split between environments
-- the same folder feels "new" when you swap accounts
-
-Codex Switchboard keeps the machine-local Codex state in place and swaps only the authentication layer.
-
-## How It Works
-
-### Local mode
-
-1. `codex` starts through the Switchboard wrapper.
-2. The launcher shows the active account and saved profiles.
-3. If you press a number within 5 seconds, Switchboard swaps to that profile.
-4. The real Codex CLI starts with the selected auth.
-5. When the session ends, the active login is auto-saved back into `~/.codex-switchboard/profiles`.
-
-### Pool mode
-
-Profiles can be grouped into pools. If Codex exits due to exhaustion or rate-limit style failures:
-
-- the current profile is marked exhausted
-- the next available profile in the active pool is selected
-- the same command is retried automatically
-
-### Cloud-linked mode
-
-When you run `csb link <token>`:
-
-- the local daemon is started automatically if needed
-- the machine is linked to CSB Cloud
-- an initial sync is performed
-- a background worker starts sending heartbeats and profile sync updates
-
-When you run `csb unlink`:
-
-- the cloud link is removed
-- the background sync worker is stopped
-- the local daemon is stopped
-
-## Quick Start
+## Quick Install
 
 ### macOS / Linux
 
@@ -71,207 +29,421 @@ curl -fsSL https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scri
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/OzlevyQ/codex-switchboard/main/scripts/bootstrap.ps1 | iex"
 ```
 
-The installer replaces the active `codex` launcher in place, so the commands should work immediately in the current shell.
+The installer replaces the active `codex` binary in place. No new shell needed — it works immediately.
 
-## Daily Flow
+---
 
-### First login capture
+## How It Works
 
-```bash
-codex login
-codex
-```
-
-After the first normal session, the active login is auto-saved as a reusable profile.
-
-### Add another account later
+### First Session
 
 ```bash
-codex login
-codex
+codex login      # log in to your Codex account
+codex            # run Codex normally — Switchboard auto-saves your login as a profile
 ```
 
-That login is also auto-saved. On the next launch, both accounts appear in the launcher.
+### Second Account
 
-### Link the machine to CSB Cloud
+```bash
+codex login      # log in to a different account
+codex            # this login is also auto-saved
+```
+
+From now on, every `codex` launch shows the Switchboard launcher. Press a number within 5 seconds to switch accounts, or wait for the default to start.
+
+### Direct Switch (no launcher)
+
+```bash
+codex-swap 2                        # switch by profile number
+codex-swap ozlevy@gmail.com         # switch by email
+```
+
+---
+
+## Local Dashboard
+
+The local dashboard gives you a full UI for managing profiles and pools.
+
+```bash
+codex ui         # starts the dashboard server and opens the browser
+```
+
+Or access directly at `http://127.0.0.1:4317`.
+
+The dashboard has four tabs:
+
+| Tab | What it does |
+|-----|-------------|
+| **Profiles** | Save, activate, and delete profiles. Shows active identity. |
+| **Pools** | Create pools, add/remove profiles, toggle auto-switch, reset exhaustion. |
+| **Share** | Export encrypted profile bundles and plain pool bundles to share with teammates. |
+| **Status** | Auth file stats, active pool state, Codex login status output. |
+
+---
+
+## Profile Pools and Auto-Rotation
+
+Pools let you group multiple accounts together. When `codex` exits because an account hits its quota or rate limit, Switchboard automatically:
+
+1. Marks that profile as exhausted
+2. Finds the next available profile in the active pool
+3. Switches to it and retries — up to 10 times per session
+
+No manual action needed. You keep working and Switchboard handles the rotation.
+
+### Creating a Pool
+
+**From the dashboard → Pools tab:**
+- Click "Create pool", name it, save
+- Use the dropdown on the pool card to add profiles
+- Toggle "Auto-switch" on
+
+**From `codex-swap` (coming soon):** CLI pool management commands.
+
+### Resetting Exhaustion
+
+When all profiles in a pool are exhausted (e.g. next day, quotas reset), open the dashboard → Pools tab → click "Reset" on the pool or an individual profile.
+
+---
+
+## Sharing Profiles and Pools
+
+### Profile Bundles (encrypted)
+
+Profile bundles contain the full `auth.json` of a saved profile, encrypted with AES-256-GCM. The key is derived from a passphrase you choose using scrypt.
+
+**Export:**
+```
+Dashboard → Share tab → Export Profile → choose profile → enter passphrase → copy bundle string (SWB1_...)
+```
+
+**Import (teammate side):**
+```
+Dashboard → Share tab → Import Profile → paste bundle → enter passphrase → activate
+```
+
+Bundle format: `SWB1_<base64url>` — version byte + scrypt salt + AES-GCM IV + encrypted payload + auth tag.
+
+### Pool Bundles (plain)
+
+Pool bundles contain only the pool structure (name, strategy, profile list). No credentials are included.
+
+**Export:**
+```
+Dashboard → Share tab → Export Pool → choose pool → copy bundle string (SWP1_...)
+```
+
+**Import:**
+```
+Dashboard → Share tab → Import Pool → paste bundle → done
+```
+
+---
+
+## Cloud Sync (CSB Cloud)
+
+CSB Cloud lets you view all your linked devices, synced profiles, and pools from a web dashboard.
+
+### Link a Machine
+
+1. Open the cloud dashboard: `https://cbs.yadbarzel.info/dashboard/devices`
+2. Click **Generate Link Token** — valid for 15 minutes
+3. On your machine:
 
 ```bash
 csb link <token>
 ```
 
-You generate the token from the cloud dashboard at:
+This starts the local daemon, registers the device, and starts background sync.
 
-```text
-https://cbs.yadbarzel.info/dashboard/devices
-```
-
-`link` is the main setup command now; it handles daemon startup for you.
-
-### Disconnect fully
+### Unlink
 
 ```bash
 csb unlink
 ```
 
-This disconnects the machine from CSB Cloud and stops the local daemon.
+Stops the sync worker, unlinks the device from cloud, and stops the local daemon.
 
-## Commands
+### Other Commands
+
+| Command | What it does |
+|---------|-------------|
+| `csb status` | Show current link status, device ID, sync state |
+| `csb sync` | Force a manual profile/pool sync to cloud |
+| `csb up` | Start daemon + sync if already linked |
+| `csb daemon start` | Start the local daemon on port 4317 |
+| `csb daemon stop` | Stop the local daemon |
+| `csb daemon restart` | Restart the local daemon |
+
+---
+
+## Full Command Reference
 
 ### Core CLI
 
-| Command | What it does |
-| --- | --- |
-| `codex` | Shows the launcher, allows quick profile switching, then runs the real Codex CLI |
-| `codex ui` | Starts the local dashboard server and opens it in the default browser |
-| `codex-swap` | Switches directly between saved profiles by menu, profile name, or email |
+| Command | Description |
+|---------|-------------|
+| `codex [args]` | Launcher → profile select → real Codex CLI. Auto-rotates on exhaustion. |
+| `codex ui` | Start local dashboard server, open in browser |
+| `codex-swap [id]` | Switch profile directly by number, name, or email |
 
-### Cloud / daemon CLI
+### Cloud / Daemon CLI
 
-| Command | What it does |
-| --- | --- |
-| `csb link <token>` | Starts the local daemon if needed, links the machine to CSB Cloud, runs initial sync, and starts background live sync |
-| `csb unlink` | Unlinks the machine from CSB Cloud, stops background sync, and stops the local daemon |
-| `csb status` | Shows current CSB Cloud link status, device ID, API URL, and whether live sync is running |
-| `csb sync` | Pushes current local profiles and pools to CSB Cloud |
-| `csb up` | Starts the local daemon and runs sync if the machine is already linked |
-| `csb daemon start` | Starts the local daemon on port `4317` |
-| `csb daemon stop` | Stops the local daemon |
-| `csb daemon restart` | Restarts the local daemon |
+| Command | Description |
+|---------|-------------|
+| `csb link <token>` | Start daemon → link machine → initial sync → start live sync |
+| `csb unlink` | Stop sync → unlink device → stop daemon |
+| `csb status` | Show link status, device ID, API URL |
+| `csb sync` | Push current profiles and pools to cloud |
+| `csb up` | Start daemon and sync (if already linked) |
+| `csb daemon start` | Start local daemon |
+| `csb daemon stop` | Stop local daemon |
+| `csb daemon restart` | Restart local daemon |
 
-## Command Notes
+---
 
-- `codex` waits 5 seconds on the launcher screen.
-- `codex-swap` accepts:
-  - a number
-  - a profile name
-  - an email
-- `csb link <token>` is the preferred setup command. You do not need to run `csb daemon start` first.
-- `csb unlink` now also stops the local daemon even if no active cloud link exists.
-- `csb up` is a convenience command, not the required setup flow.
+## Architecture
 
-## Dashboard
+```
+codex (wrapper)                     bin/codex
+ └── codex-wrapper.mjs              Shows launcher, rotates on exhaustion, runs real codex
 
-### Cloud dashboard
+codex-swap                          bin/codex-swap
+ └── codex-swap.mjs                 Direct profile switcher
 
-```text
-https://cbs.yadbarzel.info/dashboard
+csb                                 bin/csb
+ └── csb-cloud.mjs                  Cloud daemon: link, sync, heartbeat, unlink
+
+Local Daemon (port 4317)
+ └── server.mjs                     REST API + SSE for local dashboard
+
+Shared Runtime
+ ├── common.mjs                     Profile CRUD, identity decode, launcher UI
+ ├── pool-manager.mjs               Pool CRUD, exhaustion tracking, auto-rotation
+ └── share-manager.mjs             Encrypted profile + plain pool bundle export/import
 ```
 
-### Local dashboard
+### Key Data Paths
 
-The local dashboard runs on:
+| Path | Purpose |
+|------|---------|
+| `~/.codex/auth.json` | Active Codex auth — swapped on profile switch |
+| `~/.codex-switchboard/profiles/<name>/auth.json` | Saved profile snapshots |
+| `~/.codex-switchboard/pools.json` | Pool definitions |
+| `~/.codex-switchboard/meta.json` | Active profile name |
+| `~/.codex-switchboard/config.json` | Install metadata (real codex path) |
+| `~/.codex-switchboard/csb-cloud.json` | Cloud link config + device API key |
+| `~/.codex-switchboard/csb-daemon.pid` | Local daemon PID |
+| `~/.codex-switchboard/csb-watch.pid` | Background sync worker PID |
+| `~/.codex-switchboard/app/` | Installed app files |
 
-```text
-http://127.0.0.1:4317
-```
+### How Exhaustion Detection Works
 
-Open it with:
+When `codex` exits, Switchboard captures its stderr and matches against known error patterns:
 
-```bash
-codex ui
-```
+- `"exceeded your current quota"` → exhausted
+- `"insufficient_quota"` → exhausted
+- `"Your refresh token has already been used"` → exhausted
+- `"429 Too Many Requests"` → rate_limit
+- `"rate_limit_exceeded"` → rate_limit
 
-Or run the server directly:
+On exhaustion, the current profile is marked in `state.json` with `exhausted: true` and a timestamp. The next non-exhausted profile in the active pool is selected.
 
-```bash
-npm start
-```
+### Profile Identity
 
-### Expose the local dashboard to your network
+Profiles are named by slugifying the email from the JWT `id_token` in `auth.json`. The `decodeIdentityFromAuth()` function in `common.mjs` decodes the JWT without any library — it base64url-decodes the middle segment.
 
-```bash
-HOST=0.0.0.0 codex ui
-```
+---
 
-or:
+## Cloud Web Dashboard
 
-```bash
-HOST=0.0.0.0 PORT=4317 npm start
-```
+The cloud web dashboard (`csb-web/`) is a full-stack React + Express app:
 
-When started with `HOST=0.0.0.0`, Switchboard still opens the browser locally on `127.0.0.1`, but the server is reachable from the local network as well.
+- **Frontend**: React 19, Zustand, Tailwind CSS, Vite
+- **Backend**: Express.js, Firebase Auth, JSON file storage (→ MongoDB in production)
+- **Auth**: Google Sign-in via Firebase, with device API key auth for the CLI
 
-## Installation
+### Dashboard Screens
 
-### Local install from the repo
+| Screen | What it shows |
+|--------|--------------|
+| Overview | Device count, profile count, active pool stats |
+| Devices | Linked machines, connection status, link new device |
+| Profiles | All synced profiles across devices |
+| Pools | Pool configs with auto-switch settings |
+| Marketplace | Browse and purchase pool templates / workflow packs |
+| My Listings | Sell your own pool templates |
+
+### Security Model
+
+| Data | Storage | Encryption |
+|------|---------|-----------|
+| Local auth.json | Machine filesystem only | OS-level |
+| Profile bundles (shared) | Exported as text strings | AES-256-GCM + scrypt |
+| Pool bundles (shared) | Exported as text strings | None (no secrets) |
+| Synced profiles (cloud) | Metadata only — name, email, accountId | TLS in transit |
+| Device API keys | Stored server-side | Stored hashed (HMAC-SHA-256) in production |
+| Link tokens | Server-side, 15-min TTL | Stored hashed in production |
+
+**Raw `auth.json` is never sent to the cloud.** Only metadata (name, email, accountId, pool membership, exhaustion flag) is synced.
+
+---
+
+## Marketplace
+
+The marketplace lets the community share and sell:
+
+- **Pool templates** — pre-configured rotation pools for common workflows
+- **Workflow packs** — optimized switching configs for freelancers, agencies, CI pipelines
+- **Team presets** — pool isolation configs, audit policies, bundle validation rules
+
+Marketplace items contain **pool/workflow configuration only** — no credentials, no auth tokens.
+
+### Selling a Template
+
+1. Open cloud dashboard → My Listings
+2. Click "New Listing"
+3. Fill title, description, category, price (0 = free), and optional bundle data
+4. Publish
+
+### Buying a Template
+
+1. Open cloud dashboard → Marketplace
+2. Browse or search by category
+3. Click "Get" (free) or "Purchase"
+4. Download the bundle config and apply locally
+
+---
+
+## Installation Details
+
+### What `install.sh` Does
+
+1. Finds the current `codex` binary via `which codex`
+2. Backs it up as `codex-switchboard-real` in the same directory
+3. Writes the Switchboard launcher in its place
+4. Creates `csb` and `codex-swap` commands
+5. Copies the runtime to `~/.codex-switchboard/app/`
+6. Saves the real codex path to `~/.codex-switchboard/config.json`
+
+### Local Install from Repo
 
 ```bash
 bash ./scripts/install.sh
-```
-
-or:
-
-```bash
+# or:
 npm run install:unix
 ```
 
-### Fallback archive installer
-
-```bash
-tmp="$(mktemp -d)" && curl -fsSL https://codeload.github.com/OzlevyQ/codex-switchboard/tar.gz/refs/heads/main | tar -xzf - -C "$tmp" && bash "$(find "$tmp" -type f -path '*/scripts/install.sh' | head -n 1)" && rm -rf "$tmp"
-```
-
-## Uninstall
-
-### Remove the app but keep profiles
-
-```bash
-bash ./scripts/uninstall.sh
-```
-
-### Remove everything, including profiles and metadata
-
-```bash
-bash ./scripts/uninstall.sh --purge-data
-```
-
-## Local Data Layout
-
-| Path | Purpose |
-| --- | --- |
-| `~/.codex/auth.json` | Active Codex auth used by the real CLI |
-| `~/.codex-switchboard/profiles/` | Saved profile auth snapshots |
-| `~/.codex-switchboard/meta.json` | Active profile metadata |
-| `~/.codex-switchboard/csb-cloud.json` | Current cloud link config |
-| `~/.codex-switchboard/csb-daemon.pid` | Local daemon PID |
-| `~/.codex-switchboard/csb-watch.pid` | Background cloud sync worker PID |
-| `~/.codex-switchboard/app/` | Installed local app files |
-
-## Development
-
-### Run the local dashboard server from the repo
-
-```bash
-npm start
-```
-
-### Reinstall the local runtime after changes
+### Reinstall After Code Changes
 
 ```bash
 bash ./scripts/install.sh
 ```
 
-## Current Command Inventory
+---
 
-This is the current local command surface in the repo:
+## Uninstall
 
-- `codex`
-- `codex ui`
-- `codex-swap`
-- `csb link <token>`
-- `csb unlink`
-- `csb status`
-- `csb sync`
-- `csb up`
-- `csb daemon start`
-- `csb daemon stop`
-- `csb daemon restart`
-- `bash ./scripts/install.sh`
-- `bash ./scripts/uninstall.sh`
-- `bash ./scripts/uninstall.sh --purge-data`
+```bash
+bash ./scripts/uninstall.sh              # Remove Switchboard, keep profiles
+bash ./scripts/uninstall.sh --purge-data # Remove everything including profiles
+```
 
-## Important Scope Note
+---
 
-This repository is the local runtime and installer layer.
+## Development
 
-The separate `csb-web/` application is intentionally not part of this GitHub package.
+### Run the Local Dashboard
+
+```bash
+npm start        # starts server.mjs on port 4317
+```
+
+### Run the Cloud Web App
+
+```bash
+cd csb-web
+pnpm install
+cp .env.example .env   # fill in Firebase config
+pnpm run dev:all       # starts both Vite (port 5173) and Express backend (port 4318)
+```
+
+### Expose the Dashboard to Your Network
+
+```bash
+HOST=0.0.0.0 codex ui
+# or:
+HOST=0.0.0.0 PORT=4317 npm start
+```
+
+The browser opens on `127.0.0.1` but the server accepts connections from the local network.
+
+### Module System
+
+Everything is ES modules (`"type": "module"` in package.json). All runtime files use `.mjs`. No build step or bundler for the local runtime.
+
+---
+
+## Environment Variables
+
+### Local Daemon (`server.mjs`)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `4317` | Dashboard port |
+| `HOST` | `127.0.0.1` | Dashboard bind address |
+| `SWITCHBOARD_NO_LISTEN` | — | Set to `1` to load without binding (syntax check) |
+
+### Cloud Daemon (`csb-cloud.mjs`)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CSB_DASHBOARD_URL` | `https://cbs.yadbarzel.info` | Cloud dashboard base URL |
+| `CSB_API_URL` | same as dashboard URL | Cloud API base URL |
+
+### Cloud Backend (`csb-web/server/`)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `CSB_PORT` | No (4318) | Backend port |
+| `CSB_HOST` | No (127.0.0.1) | Backend bind address |
+| `NODE_ENV` | Yes in prod | `development` or `production` |
+| `MONGODB_URI` | Yes in prod | Atlas connection string |
+| `MONGODB_DB_NAME` | Yes in prod | `csb_dev` or `csb_prod` |
+| `CSB_TOKEN_PEPPER` | Yes in prod | HMAC secret for hashing tokens |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Yes in prod | Firebase Admin credentials path |
+
+---
+
+## What's Missing / Roadmap
+
+| Area | Status | Notes |
+|------|--------|-------|
+| MongoDB backend | Planned | Current: JSON files. Migration plan ready. |
+| Payment integration | Planned | Marketplace records purchases but no payment gateway |
+| Two-factor auth | Not started | Firebase supports it but not wired |
+| Team/org accounts | Not started | Currently all accounts are individual |
+| Rate limiting | Not started | No request throttling on backend routes |
+| Pagination | Not started | All lists loaded in full |
+| CLI pool commands | Partial | `csb pool create/add/remove` not yet exposed |
+| Bundle versioning | Not started | No version tracking for marketplace templates |
+
+---
+
+## Repository Structure
+
+```
+/
+├── bin/                    Shell wrappers (codex, codex-swap, csb)
+├── runtime/                Node.js runtime (common, wrapper, swap, pool, share, cloud)
+├── public/                 Static files for local dashboard (index.html)
+├── server.mjs              Local daemon HTTP server (port 4317)
+├── scripts/                install.sh, bootstrap.sh, uninstall.sh
+├── package.json            Root dependencies
+└── csb-web/                Cloud web app (not installed locally, see below)
+    ├── src/                React frontend
+    ├── server/             Express backend
+    └── package.json        csb-web dependencies
+```
+
+> **Note**: `csb-web/` is excluded from this repository's git history. It is deployed separately to the cloud. The local runtime (`runtime/`, `server.mjs`, `bin/`) is what gets installed on user machines.
