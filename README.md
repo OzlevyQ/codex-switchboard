@@ -94,6 +94,7 @@ The installer is designed to make `codex` work immediately in the current shell 
 | `codex ui` | Start the local dashboard server and open it in the default browser |
 | `codex-swap` | Switch directly between saved profiles |
 | `csb link <token>` | Link the machine to the CSB Cloud Platform |
+| `csb up` | Start the local daemon and run cloud sync automatically if linked |
 | `csb sync` | Push local profile metadata to the cloud |
 | `csb status` | Check cloud platform connection status |
 | `csb daemon start` | Start the local Switchboard GUI & API proxy (Port 4317) |
@@ -168,6 +169,19 @@ codex
 ```bash
 codex ui
 ```
+
+### Bring everything up in one command
+
+```bash
+csb up
+```
+
+This command:
+
+- starts or reuses the local daemon on `127.0.0.1:4317`
+- waits until the local API responds
+- runs `csb sync` automatically if the device is already linked
+- prints the local and cloud dashboard URLs
 
 ### Switch directly from the terminal
 

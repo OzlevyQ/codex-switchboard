@@ -13,6 +13,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -84,6 +85,10 @@ function isPidRunning(pid) {
 
 function getApiUrl() {
   return process.env.CSB_API_URL || getCloudConfig()?.apiUrl || DEFAULT_API_URL;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function apiRequest(path, options = {}) {
@@ -289,28 +294,49 @@ async function cmdUnlink() {
   console.log('\n  ✓ Device unlinked from CSB Cloud.\n');
 }
 
-function startDaemon() {
-  import('node:child_process').then(({ spawn }) => {
-    const existingPid = readDaemonPid();
-    if (isPidRunning(existingPid)) {
-      console.log(`\n  ✓ CSB Local Daemon already running (pid ${existingPid}) on port 4317.\n`);
-      return;
-    }
+async function waitForLocalDaemon(maxAttempts = 15) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await fetch('http://127.0.0.1:4317/api/state');
+      if (response.ok) {
+        return true;
+      }
+    } catch {}
+    await sleep(250);
+  }
+  return false;
+}
 
-    console.log('\n  ⌁ Starting CSB Local Daemon on port 4317...');
-    const child = spawn('node', [SERVER_MJS], {
-      stdio: 'ignore',
-      detached: true,
-    });
-    child.on('error', (err) => console.error('  ✗ Failed to start daemon:', err.message));
-    child.unref();
-    writeDaemonPid(child.pid);
+async function startDaemon({ restart = false } = {}) {
+  const existingPid = readDaemonPid();
+  if (restart && isPidRunning(existingPid)) {
+    try {
+      process.kill(existingPid, 'SIGTERM');
+    } catch {}
+    clearDaemonPid();
+    await sleep(250);
+  } else if (isPidRunning(existingPid)) {
+    console.log(`\n  ✓ CSB Local Daemon already running (pid ${existingPid}) on port 4317.\n`);
+    return existingPid;
+  }
 
-    // Auto-sync heartbeat on start
-    cmdSync(true).catch(() => {});
-
-    console.log(`  ✓ Started with pid ${child.pid}\n`);
+  console.log(`\n  ⌁ ${restart ? 'Restarting' : 'Starting'} CSB Local Daemon on port 4317...`);
+  const child = spawn('node', [SERVER_MJS], {
+    stdio: 'ignore',
+    detached: true,
   });
+  child.on('error', (err) => console.error('  ✗ Failed to start daemon:', err.message));
+  child.unref();
+  writeDaemonPid(child.pid);
+
+  const ready = await waitForLocalDaemon();
+  if (ready) {
+    console.log(`  ✓ Daemon ready on 127.0.0.1:4317 (pid ${child.pid})\n`);
+  } else {
+    console.log(`  ! Daemon started with pid ${child.pid}, but readiness check timed out.\n`);
+  }
+
+  return child.pid;
 }
 
 function stopDaemon() {
@@ -330,15 +356,41 @@ function stopDaemon() {
   }
 }
 
-function restartDaemon() {
-  const pid = readDaemonPid();
-  if (isPidRunning(pid)) {
-    try {
-      process.kill(pid, 'SIGTERM');
-    } catch {}
-    clearDaemonPid();
+async function restartDaemon() {
+  return startDaemon({ restart: true });
+}
+
+async function cmdUp() {
+  const cyan = '\u001b[36m';
+  const green = '\u001b[32m';
+  const yellow = '\u001b[33m';
+  const bold = '\u001b[1m';
+  const reset = '\u001b[0m';
+
+  console.log(`\n${cyan}${bold}⌁ CSB Up${reset}\n`);
+
+  await startDaemon();
+
+  const localReady = await waitForLocalDaemon();
+  if (localReady) {
+    console.log(`  ${green}Local daemon reachable${reset}`);
+  } else {
+    console.log(`  ${yellow}Local daemon did not confirm readiness in time${reset}`);
   }
-  startDaemon();
+
+  if (getCloudConfig()) {
+    try {
+      await cmdSync(true);
+      console.log(`  ${green}Cloud sync complete${reset}`);
+    } catch {
+      console.log(`  ${yellow}Cloud sync skipped or failed${reset}`);
+    }
+  } else {
+    console.log(`  ${yellow}Cloud not linked — run csb link <token> when ready${reset}`);
+  }
+
+  console.log(`  Local UI:  http://127.0.0.1:4317`);
+  console.log(`  Cloud UI:  http://localhost:5173/dashboard\n`);
 }
 
 // ── Main ──
@@ -360,10 +412,13 @@ async function main() {
     case 'unlink':
       await cmdUnlink();
       break;
+    case 'up':
+      await cmdUp();
+      break;
     case 'daemon':
-      if (args[1] === 'start') startDaemon();
+      if (args[1] === 'start') await startDaemon();
       else if (args[1] === 'stop') stopDaemon();
-      else if (args[1] === 'restart') restartDaemon();
+      else if (args[1] === 'restart') await restartDaemon();
       else console.error('  Usage: csb daemon <start|stop|restart>');
       break;
     default:
@@ -372,6 +427,7 @@ async function main() {
 
   Usage:
     csb link <token>    Link this device to your CSB cloud account
+    csb up              Start the local daemon and run sync if linked
     csb sync             Sync local profiles to the cloud
     csb status           Show cloud connection status
     csb unlink           Disconnect this device from the cloud
