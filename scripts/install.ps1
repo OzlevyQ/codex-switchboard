@@ -30,6 +30,22 @@ if (Test-Path (Join-Path $AppDir "public")) { Remove-Item -Recurse -Force (Join-
 Copy-Item -Recurse -Force (Join-Path $RootDir "runtime") (Join-Path $AppDir "runtime")
 Copy-Item -Recurse -Force (Join-Path $RootDir "public") (Join-Path $AppDir "public")
 
+$requiredFiles = @(
+  (Join-Path $AppDir "server.mjs"),
+  (Join-Path $AppDir "runtime\\common.mjs"),
+  (Join-Path $AppDir "runtime\\codex-wrapper.mjs"),
+  (Join-Path $AppDir "runtime\\codex-swap.mjs"),
+  (Join-Path $AppDir "runtime\\pool-manager.mjs"),
+  (Join-Path $AppDir "runtime\\share-manager.mjs"),
+  (Join-Path $AppDir "runtime\\csb-cloud.mjs")
+)
+
+foreach ($file in $requiredFiles) {
+  if (-not (Test-Path $file)) {
+    throw "Install verification failed. Missing file: $file"
+  }
+}
+
 if (-not (Test-Path $BackupCodex)) {
   if (Test-Path $LegacyBackupCodex) {
     Copy-Item -Force $LegacyBackupCodex $BackupCodex

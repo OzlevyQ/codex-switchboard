@@ -76,6 +76,21 @@ mkdir -p "${APP_DIR}/public"
 cp -R "${ROOT_DIR}/public/." "${APP_DIR}/public/"
 cp -R "${ROOT_DIR}/runtime/." "${APP_DIR}/runtime/"
 
+for required_file in \
+  "${APP_DIR}/server.mjs" \
+  "${APP_DIR}/runtime/common.mjs" \
+  "${APP_DIR}/runtime/codex-wrapper.mjs" \
+  "${APP_DIR}/runtime/codex-swap.mjs" \
+  "${APP_DIR}/runtime/pool-manager.mjs" \
+  "${APP_DIR}/runtime/share-manager.mjs" \
+  "${APP_DIR}/runtime/csb-cloud.mjs"
+do
+  if [[ ! -f "${required_file}" ]]; then
+    echo "Install verification failed. Missing file: ${required_file}" >&2
+    exit 1
+  fi
+done
+
 if [[ ! -w "${TARGET_BIN_DIR}" ]]; then
   echo "Target bin directory is not writable: ${TARGET_BIN_DIR}" >&2
   echo "Set CODEX_SWITCHBOARD_REAL_CODEX to a writable Codex path and retry." >&2
