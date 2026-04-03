@@ -43,6 +43,8 @@ const authFile = join(codexDir, "auth.json");
 const stateDir = process.env.SWITCHBOARD_STATE_DIR || join(os.homedir(), ".codex-switchboard");
 const profilesDir = join(stateDir, "profiles");
 const metaFile = join(stateDir, "meta.json");
+const stateEventClients = new Set();
+let stateBroadcastSignature = "";
 
 mkdirSync(profilesDir, { recursive: true });
 
@@ -184,6 +186,31 @@ function currentAuthInfo() {
   }
 }
 
+function decodeIdentityFromAuthFile(filePath) {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const raw = JSON.parse(readFileSync(filePath, "utf8"));
+    const idToken = raw?.tokens?.id_token;
+    if (!idToken) {
+      return null;
+    }
+
+    const payload = idToken.split(".")[1];
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const decoded = JSON.parse(Buffer.from(padded, "base64url").toString("utf8"));
+    return {
+      name: decoded.name || null,
+      email: decoded.email || null,
+      sub: decoded.sub || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function listProfiles() {
   const meta = readMeta();
   return readdirSync(profilesDir, { withFileTypes: true })
@@ -203,69 +230,87 @@ function listProfiles() {
 function readAuthSummary(filePath) {
   try {
     const raw = JSON.parse(readFileSync(filePath, "utf8"));
+    const identity = decodeIdentityFromAuthFile(filePath);
     return {
       exists: true,
       authMode: raw.auth_mode || "unknown",
       accountId: raw?.tokens?.account_id || null,
       lastRefresh: raw.last_refresh || null,
       size: statSync(filePath).size,
+      email: identity?.email || null,
+      displayName: identity?.name || null,
     };
   } catch {
     return { exists: true, invalid: true };
   }
 }
 
-function runCodexStatus() {
-  return new Promise((resolve) => {
-    const child = spawn("codex", ["login", "status"], {
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+function decodeCurrentIdentity() {
+  return decodeIdentityFromAuthFile(authFile);
+}
 
-    let stdout = "";
-    let stderr = "";
+function buildStatePayload() {
+  const profiles = listProfiles();
+  const pools = listPools();
+  const profilesWithState = profiles.map((profile) => ({
+    ...profile,
+    state: getProfileState(profile.name),
+  }));
 
-    child.stdout.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
+  return {
+    currentAuth: currentAuthInfo(),
+    identity: decodeCurrentIdentity(),
+    profiles: profilesWithState,
+    pools,
+    activePool: getActivePoolName(),
+    meta: readMeta(),
+    codexStatus: null,
+    paths: {
+      codexDir,
+      authFile,
+      profilesDir,
+    },
+    serverTime: new Date().toISOString(),
+  };
+}
 
-    child.stderr.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-
-    child.on("close", (code) => {
-      resolve({
-        code,
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
-      });
-    });
+function stateSignature(payload) {
+  return JSON.stringify({
+    currentAuth: payload.currentAuth,
+    identity: payload.identity,
+    profiles: payload.profiles,
+    pools: payload.pools,
+    activePool: payload.activePool,
+    meta: payload.meta,
   });
 }
 
-function decodeCurrentIdentity() {
-  if (!existsSync(authFile)) {
-    return null;
+function writeSse(res, event, payload) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function broadcastState(payload) {
+  const signature = stateSignature(payload);
+  if (signature === stateBroadcastSignature) {
+    return;
   }
 
-  try {
-    const raw = JSON.parse(readFileSync(authFile, "utf8"));
-    const idToken = raw?.tokens?.id_token;
-    if (!idToken) {
-      return null;
+  stateBroadcastSignature = signature;
+  for (const client of stateEventClients) {
+    try {
+      writeSse(client, "state", payload);
+    } catch {
+      stateEventClients.delete(client);
     }
-
-    const payload = idToken.split(".")[1];
-    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
-    const decoded = JSON.parse(Buffer.from(padded, "base64url").toString("utf8"));
-    return {
-      name: decoded.name || null,
-      email: decoded.email || null,
-      sub: decoded.sub || null,
-    };
-  } catch {
-    return null;
   }
+}
+
+function queueStateBroadcast() {
+  if (!stateEventClients.size) {
+    return;
+  }
+  broadcastState(buildStatePayload());
 }
 
 function serveStatic(req, res) {
@@ -302,26 +347,26 @@ async function handleApi(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/state") {
-    const codexStatus = await runCodexStatus();
-    const profiles = listProfiles();
-    const pools = listPools();
-    const profilesWithState = profiles.map((p) => ({
-      ...p,
-      state: getProfileState(p.name),
-    }));
-    sendJson(res, 200, {
-      currentAuth: currentAuthInfo(),
-      identity: decodeCurrentIdentity(),
-      profiles: profilesWithState,
-      pools,
-      activePool: getActivePoolName(),
-      meta: readMeta(),
-      codexStatus,
-      paths: {
-        codexDir,
-        authFile,
-        profilesDir,
-      },
+    sendJson(res, 200, buildStatePayload());
+    return true;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/events") {
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      res.setHeader(key, value);
+    }
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    res.write("retry: 2000\n\n");
+    stateEventClients.add(res);
+    writeSse(res, "state", buildStatePayload());
+
+    req.on("close", () => {
+      stateEventClients.delete(res);
     });
     return true;
   }
@@ -343,6 +388,7 @@ async function handleApi(req, res) {
     const dir = ensureProfileDir(name);
     copyFileSync(authFile, join(dir, "auth.json"));
     sendJson(res, 200, { ok: true, profile: name });
+    queueStateBroadcast();
     return true;
   }
 
@@ -360,6 +406,7 @@ async function handleApi(req, res) {
     copyFileSync(source, authFile);
     writeMeta({ activeProfile: name });
     sendJson(res, 200, { ok: true, profile: name });
+    queueStateBroadcast();
     return true;
   }
 
@@ -379,6 +426,7 @@ async function handleApi(req, res) {
       writeMeta({ activeProfile: null });
     }
     sendJson(res, 200, { ok: true });
+    queueStateBroadcast();
     return true;
   }
 
@@ -387,6 +435,7 @@ async function handleApi(req, res) {
     const meta = readMeta();
     writeMeta({ activeProfile: meta.activeProfile || null });
     sendJson(res, 200, { ok: true });
+    queueStateBroadcast();
     return true;
   }
 
@@ -407,6 +456,7 @@ async function handleApi(req, res) {
     try {
       createPool(name, body.strategy || "round-robin");
       sendJson(res, 200, { ok: true, name });
+      queueStateBroadcast();
     } catch (err) {
       sendJson(res, 400, { error: err.message });
     }
@@ -422,6 +472,7 @@ async function handleApi(req, res) {
     }
     deletePool(name);
     sendJson(res, 200, { ok: true });
+    queueStateBroadcast();
     return true;
   }
 
@@ -436,6 +487,7 @@ async function handleApi(req, res) {
     try {
       addProfileToPool(pool, profile);
       sendJson(res, 200, { ok: true });
+      queueStateBroadcast();
     } catch (err) {
       sendJson(res, 404, { error: err.message });
     }
@@ -453,6 +505,7 @@ async function handleApi(req, res) {
     try {
       removeProfileFromPool(pool, profile);
       sendJson(res, 200, { ok: true });
+      queueStateBroadcast();
     } catch (err) {
       sendJson(res, 404, { error: err.message });
     }
@@ -465,6 +518,7 @@ async function handleApi(req, res) {
     try {
       setActivePool(name);
       sendJson(res, 200, { ok: true });
+      queueStateBroadcast();
     } catch (err) {
       sendJson(res, 404, { error: err.message });
     }
@@ -481,6 +535,7 @@ async function handleApi(req, res) {
     try {
       setPoolAutoSwitch(name, Boolean(body.enabled));
       sendJson(res, 200, { ok: true });
+      queueStateBroadcast();
     } catch (err) {
       sendJson(res, 404, { error: err.message });
     }
@@ -562,6 +617,7 @@ async function handleApi(req, res) {
     }
     try { setPoolAutoSwitch(finalName, pool.autoSwitch); } catch {}
     sendJson(res, 200, { ok: true, poolName: finalName, added, skipped });
+    queueStateBroadcast();
     return true;
   }
 
@@ -578,6 +634,7 @@ async function handleApi(req, res) {
       return true;
     }
     sendJson(res, 200, { ok: true });
+    queueStateBroadcast();
     return true;
   }
 
@@ -605,6 +662,13 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 500, { error: error instanceof Error ? error.message : "Unknown error" });
   }
 });
+
+setInterval(() => {
+  if (!stateEventClients.size) {
+    return;
+  }
+  queueStateBroadcast();
+}, 1500);
 
 if (noListen) {
   console.log("Codex Switchboard loaded without listening");
