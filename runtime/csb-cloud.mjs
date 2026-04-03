@@ -33,7 +33,9 @@ const SERVER_MJS = path.join(ROOT_DIR, 'server.mjs');
 
 const CSB_CLOUD_FILE = path.join(SWITCHBOARD_DIR, 'csb-cloud.json');
 const DAEMON_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-daemon.pid');
+const WATCH_PID_FILE = path.join(SWITCHBOARD_DIR, 'csb-watch.pid');
 const DEFAULT_API_URL = 'http://127.0.0.1:4318';
+const WATCH_INTERVAL_MS = 4000;
 
 // ── Helpers ──
 
@@ -70,6 +72,27 @@ function writeDaemonPid(pid) {
 function clearDaemonPid() {
   try {
     rmSync(DAEMON_PID_FILE, { force: true });
+  } catch {}
+}
+
+function readWatchPid() {
+  try {
+    const raw = readFileSync(WATCH_PID_FILE, 'utf8').trim();
+    const pid = Number(raw);
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeWatchPid(pid) {
+  mkdirSync(SWITCHBOARD_DIR, { recursive: true });
+  writeFileSync(WATCH_PID_FILE, `${pid}\n`, 'utf8');
+}
+
+function clearWatchPid() {
+  try {
+    rmSync(WATCH_PID_FILE, { force: true });
   } catch {}
 }
 
@@ -170,6 +193,13 @@ async function cmdLink(token) {
   console.log(`  Profiles: ${deviceInfo.profileCount} local profile(s)`);
   console.log('');
 
+  const daemonReady = await waitForLocalDaemon(4);
+  if (!daemonReady) {
+    console.error(`  ✗ Local daemon is not running.\n`);
+    console.error(`  Run: csb daemon start\n`);
+    process.exit(1);
+  }
+
   try {
     // Register device with the link token
     const result = await apiRequest('/api/devices/register', {
@@ -198,9 +228,10 @@ async function cmdLink(token) {
     // Auto-sync profiles
     console.log('  Syncing profiles...');
     await cmdSync(true);
+    await ensureWatchRunning(true);
 
     console.log(`\n${cyan}  Your device is now connected to CSB Cloud.${reset}`);
-    console.log(`  Run ${bold}csb sync${reset} to push local changes.`);
+    console.log(`  Background live sync is now active.`);
     console.log(`  Run ${bold}csb status${reset} to check connection.\n`);
   } catch (err) {
     console.error(`\n  ✗ Link failed: ${err.message}\n`);
@@ -267,6 +298,12 @@ async function cmdStatus() {
   console.log(`  Device ID: ${config.deviceId}`);
   console.log(`  API URL:   ${config.apiUrl}`);
   console.log(`  Linked at: ${config.linkedAt}`);
+  let watchPid = readWatchPid();
+  if (!isPidRunning(watchPid)) {
+    await ensureWatchRunning(true);
+    watchPid = readWatchPid();
+  }
+  console.log(`  Live sync: ${isPidRunning(watchPid) ? `running (pid ${watchPid})` : 'not running'}`);
   console.log('');
 
   // Try heartbeat
@@ -290,6 +327,7 @@ async function cmdUnlink() {
   }
 
   rmSync(CSB_CLOUD_FILE, { force: true });
+  stopWatch();
 
   console.log('\n  ✓ Device unlinked from CSB Cloud.\n');
 }
@@ -360,6 +398,86 @@ async function restartDaemon() {
   return startDaemon({ restart: true });
 }
 
+function stopWatch() {
+  const pid = readWatchPid();
+  if (!isPidRunning(pid)) {
+    clearWatchPid();
+    return false;
+  }
+
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch {}
+  clearWatchPid();
+  return true;
+}
+
+async function ensureWatchRunning(quiet = false) {
+  if (!getCloudConfig()) {
+    return false;
+  }
+
+  const pid = readWatchPid();
+  if (isPidRunning(pid)) {
+    if (!quiet) {
+      console.log(`  ✓ Cloud live sync already running (pid ${pid})`);
+    }
+    return true;
+  }
+
+  const child = spawn(process.execPath, [__filename, 'watch'], {
+    stdio: 'ignore',
+    detached: true,
+    env: process.env,
+  });
+  child.unref();
+  if (child.pid) {
+    writeWatchPid(child.pid);
+  }
+
+  await sleep(250);
+  const runningPid = readWatchPid() || child.pid;
+  const running = isPidRunning(runningPid);
+
+  if (!quiet) {
+    if (running) {
+      console.log(`  ✓ Started cloud live sync worker (pid ${runningPid})`);
+    } else {
+      console.log(`  ! Tried to start cloud live sync worker, but it did not stay up`);
+    }
+  }
+  return running;
+}
+
+async function runWatchLoop() {
+  const shutdown = () => {
+    clearWatchPid();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+  writeWatchPid(process.pid);
+
+  while (true) {
+    if (!getCloudConfig()) {
+      clearWatchPid();
+      return;
+    }
+
+    try {
+      const deviceInfo = getDeviceInfo();
+      await apiRequest('/api/devices/heartbeat', {
+        method: 'POST',
+        body: JSON.stringify({ profileCount: deviceInfo.profileCount }),
+      });
+      await cmdSync(true);
+    } catch {}
+
+    await sleep(WATCH_INTERVAL_MS);
+  }
+}
+
 async function cmdUp() {
   const cyan = '\u001b[36m';
   const green = '\u001b[32m';
@@ -381,6 +499,7 @@ async function cmdUp() {
   if (getCloudConfig()) {
     try {
       await cmdSync(true);
+      await ensureWatchRunning(true);
       console.log(`  ${green}Cloud sync complete${reset}`);
     } catch {
       console.log(`  ${yellow}Cloud sync skipped or failed${reset}`);
@@ -409,6 +528,9 @@ async function main() {
     case 'status':
       await cmdStatus();
       break;
+    case 'watch':
+      await runWatchLoop();
+      break;
     case 'unlink':
       await cmdUnlink();
       break;
@@ -416,7 +538,10 @@ async function main() {
       await cmdUp();
       break;
     case 'daemon':
-      if (args[1] === 'start') await startDaemon();
+      if (args[1] === 'start') {
+        await startDaemon();
+        await ensureWatchRunning(true);
+      }
       else if (args[1] === 'stop') stopDaemon();
       else if (args[1] === 'restart') await restartDaemon();
       else console.error('  Usage: csb daemon <start|stop|restart>');
@@ -426,7 +551,7 @@ async function main() {
   CSB — CLI SwitchBoard Cloud
 
   Usage:
-    csb link <token>    Link this device to your CSB cloud account
+    csb link <token>    Link this device and start cloud live sync
     csb up              Start the local daemon and run sync if linked
     csb sync             Sync local profiles to the cloud
     csb status           Show cloud connection status

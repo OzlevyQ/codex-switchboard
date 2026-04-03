@@ -102,11 +102,13 @@ The installer is designed to make `codex` work immediately in the current shell 
 ## Typical Flow
 
 1. Install Codex Switchboard.
-2. Run `codex login` with one account.
-3. Use `codex` normally.
-4. Run `codex login` with another account later.
-5. Use `codex` again and let Switchboard auto-capture it.
-6. Next launch, press a number in the launcher to swap accounts instantly.
+2. Run `csb daemon start`.
+3. Generate a link token from the cloud dashboard and run `csb link <token>`.
+4. Run `codex login` with one account.
+5. Use `codex` normally.
+6. Run `codex login` with another account later.
+7. Use `codex` again and let Switchboard auto-capture it.
+8. Next launch, press a number in the launcher to swap accounts instantly.
 
 ## Installation
 
@@ -182,6 +184,20 @@ This command:
 - waits until the local API responds
 - runs `csb sync` automatically if the device is already linked
 - prints the local and cloud dashboard URLs
+
+### Official CSB Cloud flow
+
+```bash
+csb daemon start
+csb link <token>
+```
+
+After `csb link <token>` succeeds:
+
+- the device is linked to CSB Cloud
+- background live sync starts automatically
+- local profiles and pools are pushed continuously to the cloud
+- the local daemon keeps the machine-facing state live on `127.0.0.1:4317`
 
 ### Switch directly from the terminal
 
